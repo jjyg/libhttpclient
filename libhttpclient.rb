@@ -138,6 +138,24 @@ class HttpClient
 		return page
 	end
 
+	def post_raw(url, postdata, headers={})
+		url = abs_path(url, true)
+		
+		pretimeout ||= (rand(5) == 1) ? (3+rand(25)) : (1+rand(4))
+		diff = @next_fetch.to_i - Time.now.to_i + pretimeout
+		sleep diff if diff > 0
+		timeout ||= (rand(4) == 1) ? (3+rand(15)) : (1+rand(4))
+		@next_fetch = Time.now + timeout
+
+		@cur_url = url
+		@history << 'postraw:'+url
+		page = @http_s.post_raw(url, postdata, sess_headers.merge(headers))
+		page = analyse_page(url, page)
+		@curpage = page
+		
+		return page
+	end
+
 	def post(url, postdata, timeout=nil, pretimeout=nil)
 		url = abs_path(url, true)
 		
@@ -224,7 +242,7 @@ class HttpClient
 			
 		@cache[url] = page
 		
-		return page if recursive or (page.headers['content-type'] and page.headers['content-type'] !~ /text\/html/)
+		return page if recursive or (page.headers['content-type'] and page.headers['content-type'] !~ /text\/(ht|x)ml/)
 		
 		@referer = 'http://' + @http_s.host + url
 		
