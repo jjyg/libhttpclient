@@ -141,10 +141,9 @@ class HttpClient
 	def post_raw(url, postdata, headers={})
 		url = abs_path(url, true)
 		
-		pretimeout ||= (rand(5) == 1) ? (3+rand(25)) : (1+rand(4))
-		diff = @next_fetch.to_i - Time.now.to_i + pretimeout
+		diff = @next_fetch.to_i - Time.now.to_i
 		sleep diff if diff > 0
-		timeout ||= (rand(4) == 1) ? (3+rand(15)) : (1+rand(4))
+		timeout = (1+rand(6))
 		@next_fetch = Time.now + timeout
 
 		@cur_url = url
