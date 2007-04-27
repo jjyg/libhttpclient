@@ -8,7 +8,7 @@ require 'socket'
 require 'zlib'
 begin
 require 'openssl'
-rescue
+rescue LoadError
 end
 
 class Timeout
