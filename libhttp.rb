@@ -6,6 +6,10 @@
 
 require 'socket'
 require 'zlib'
+begin
+require 'openssl'
+rescue
+end
 
 class Timeout
 	def initialize(value)
@@ -143,25 +147,74 @@ class HttpResp
 	def inspect
 		'<#HttpAnswer:' + {'answer' => answer, 'headers' => headers, 'content' => content}.inspect
 	end
+
+	def get_text(onlyform=false, onlystr=true)
+		inform = false
+		inbody = false
+		innoframes = false
+		maynl = false
+		txt = []
+		nl = "\n"
+		@parse.each { |e|
+			case e.type
+			when 'body':  inbody = true ; next
+			when '/body': inbody = false
+			when 'noframes':  innoframes = true
+			when '/noframes': innoframes = false ; next
+			when 'form':  inform = true
+			when '/form'
+				txt << e << nl unless onlystr
+				inform = false
+			end
+			next if (onlyform and not inform) or not inbody or innoframes
+
+			case e.type
+			when 'String'
+				txt << ' ' if maynl
+				txt << HttpServer.htmlentitiesdec(e.attr['content'].gsub(/(?:&nbsp;|\s)+/, ' ').strip)
+				maynl = true
+				
+			when 'b', '/b', 'td', '/td', 'span', '/span', 'font', '/font', 'Comment', 'Script'
+				nil
+		
+			when 'br', 'p', '/p', 'table', '/table', 'tr', '/tr', 'tbody', '/tbody', 'div', '/div', 'img'
+				txt << nl if maynl
+				maynl = false
+			
+			else
+			# input select option textarea
+				next if onlystr
+				txt << nl if maynl
+				maynl = false
+				txt << e << nl
+			end
+		}
+		txt.join
+	end
 end
 
 class HttpServer
-	attr_reader :host, :proxyh, :proxyp, :timeout, :socket
-	def initialize(host, timeout = 120, proxyh=nil, proxyp=nil)
-		@host = host
-		@timeout = timeout
-		unless proxyh
-			host =~ /^(.*?)(:(\d+))?$/
-			proxyh = $1
-			proxyp = $3
+	attr_accessor :timeout
+	attr_reader :host
+        def initialize(url)
+		if not url.include? '://'
+			url = "http://#{url}"
 		end
-		@proxyh = proxyh
-		@proxyp = (proxyp or 80)
-		@socket = nil
-	end
 
-	def define_proxy(ph, pp)
-		@proxyh, @proxyp = ph, pp
+                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:http-proxy://(\w+:\w+@)?([\w.-]+)(:\d+)?/)?http(s)?://(\w+:\w+@)?([\w.-]+@)?([\w.-]+)(:\d+)?/?$}.match(url)
+
+                proxylp, @proxyh, proxyp, @use_ssl, loginpass, vhost, @host, port = md.captures
+
+                @proxyp = proxyp ? proxyp[1..-1].to_i : 3128
+                @port = port ? port[1..-1].to_i : (@use_ssl ? 443 : 80)
+
+                @proxylp = 'Basic '+[proxylp.chop].pack('m').chomp if proxylp
+                @loginpass = 'Basic '+[loginpass.chop].pack('m').chomp if loginpass
+                @vhost = vhost ? vhost.chop : @host
+
+                @socket = nil
+
+		@timeout = 120
 	end
 
 	def self.urlenc(s)
@@ -292,12 +345,14 @@ EOE
 		headers['Connection'] = 'keep-alive' if not headers['Connection']
 		headers['Accept-Encoding'] = 'gzip,deflate'
 		headers['Accept-Language'] = 'en'
+		headers['Authorization'] = @loginpass if @loginpass
+		headers['Proxy-Authorization'] = @proxylp if @proxylp and not @use_ssl
 	end
 
 	def get(page, headers = Hash.new)
 		setup_request_headers(headers)
 		
-		req = ["GET #{'http://' << @host if @host != @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		req = ["GET #{'http://' << @host if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n"
 		begin
 			s = send_req req
@@ -314,7 +369,7 @@ EOE
 		setup_request_headers(headers)
 		headers['Content-type'] ||= 'application/octet-stream'
 		headers['Content-length'] = postraw.length
-		req = ["POST #{'http://' << @host if @host != @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		req = ["POST #{'http://' << @host if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n" + postraw
 		
 		begin
@@ -329,30 +384,47 @@ EOE
 	end
 
 	def post(page, postdata, headers = Hash.new)
-		headers['Content-type'] = 'application/x-www-form-urlencoded'
+		headers['Content-type'] ||= 'application/x-www-form-urlencoded'
 
 		post_raw(page, postdata.map { |k, v|
-			if (v.class == Array)
-				v.map { |vi| "#{HttpServer.urlenc k}=#{HttpServer.urlenc vi}" }.join('&')
-			else
-				"#{HttpServer.urlenc k}=#{HttpServer.urlenc v}"
-			end
+			# a => [a1, a2], b => b1   =>   'a=a1&a=a2&b=b1'
+			((v.kind_of? Array) ? v : [v]).map { |vi| "#{HttpServer.urlenc k}=#{HttpServer.urlenc vi}" }.join('&')
 		}.join('&'), headers)
 	end
+
+        def connect_socket
+                if @proxyh
+                        @socket = TCPSocket.new @proxyh, @proxyp
+                        if @use_ssl
+				rq =  "CONNECT #@host:#@port HTTP/1.1\r\n"
+				rq << "Proxy-Authorization: #{@proxylp}\r\n" if @proxylp
+				rq << "\r\n"
+				@socket.write rq
+                                buf = @socket.gets
+                                raise "non http answer #{buf[1..100].inspect}" if buf !~ /^HTTP\/1.. (\d+) /
+                                raise "CONNECT bad response: #{buf.inspect}" if $1.to_i != 200
+                                nil until @socket.gets.chomp.empty?
+                        end
+                else
+                        @socket = TCPSocket.new @host, @port
+                end
+                if @use_ssl
+                        @socket = OpenSSL::SSL::SSLSocket.new(@socket, OpenSSL::SSL::SSLContext.new)
+                        @socket.sync_close = true
+                        @socket.connect
+                end
+        end
 
 	def send_req(req)
 		s = nil
 		retried = 0
 	begin
 		if not @socket or not ( @socket.write req ; s = @socket.gets )
-			if @socket
-				begin
-					@socket.shutdown
-				rescue Object
-				end
-				@socket.close
-			end
-			@socket = TCPSocket.open(@proxyh, @proxyp)
+			@socket.shutdown rescue nil
+			@socket.close rescue nil
+
+			connect_socket
+
 			@socket.write req
 			s = @socket.gets
 		end
@@ -417,12 +489,9 @@ EOE
 		timer.end
 		
 		close_sock = true if page.headers['connection'] == 'close'
-		if close_sock # or not @socket.connected
-			begin
-			@socket.shutdown
-			rescue Object
-			end
-			@socket.close
+		if close_sock
+			@socket.shutdown rescue nil
+			@socket.close rescue nil
 			@socket = nil
 		end
 		return page

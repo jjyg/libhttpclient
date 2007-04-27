@@ -18,12 +18,14 @@ class HttpClient
 	attr_reader :path, :cookie, :get_url_allowed, :post_allowed, :cache, :cur_url, :curpage, :history, :links, :http_s
 	attr_accessor :bogus_site, :referer, :allowbadget
 
-	def initialize(host, timeout=120, proxyh=false, proxyp=nil)
-		if proxyh==false and ENV['http_proxy'] =~ /^http:\/\/(.*?)(?::(\d+))?\//
-			proxyh = $1
-			proxyp = ($2 || 3128).to_i
+	def initialize(url)
+		if not url.include? '://'
+			url = "http://#{url}"
 		end
-		@http_s = HttpServer.new(host, timeout, proxyh, proxyp)
+		if ENV['http_proxy'] =~ /^http:\/\/(.*?)\/?$/
+			url = "http-proxy://#$1/#{url}"
+		end
+		@http_s = HttpServer.new(url)
 		@bogus_site = false
 		@allowbadget = false
 		@next_fetch = Time.now
