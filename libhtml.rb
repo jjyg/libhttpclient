@@ -2,14 +2,15 @@
 # par Yoann Guillot - 2004
 
 class HtmlElement
-	attr_accessor :type, :attr
+	attr_accessor :type, :attr, :empty
 	def initialize
 		@type = nil
 		@attr = Hash.new
+		@empty = false
 	end
 
 	def to_s
-		'<' + type + attr.map{ |k, v| " #{k}=\"#{v}\"" }.join + '>'
+		'<' << type << attr.map{ |k, v| " #{k}=\"#{v}\"" }.join << (@empty ? ' />' : '>')
 	end
 end
 
@@ -39,11 +40,10 @@ def parsehtml(page)
 	# tags take downcase on type and attrname
 	
 	page.gsub(/\s+/, ' ').gsub(/< /, '<').each_byte { |c|
-		c = c.chr
 		case state
 		when 0 # string
 			case c
-			when '<'
+			when ?<
 				if curword.length > 0
 					curelem = HtmlElement.new
 					curelem.type = 'String'
@@ -53,20 +53,20 @@ def parsehtml(page)
 				curword = ''
 				curelem = HtmlElement.new
 				state = 1
-			when ' '
-				curword << ' ' if curword.length > 0
+			when ?\ 
+				curword << c if curword.length > 0
 			else
 				curword << c
 			end
 		when 1 # after tag start
 			if curword == '!--' # html comment
-				curword = c
+				curword = c.chr
 				state = 8
 				next
 			end
 			
 			case c
-			when '>'
+			when ?>
 				curelem.type = curword.downcase
 				if curelem.type == 'script'
 					curword = curelem.to_s
@@ -76,15 +76,15 @@ def parsehtml(page)
 				parse << curelem
 				curword = ''
 				state = 0
-			when '/'
+			when ?/
 				if curword.length == 0
 					# / at the beginning of a tag
-					curword = c
+					curword = c.chr
 				else
 					laststate = state
 					state = 9
 				end
-			when ' '
+			when ?\ 
 				if curword.length > 0
 					# <    kikoospaces lol="mdr">
 					curelem.type = curword.downcase
@@ -96,7 +96,7 @@ def parsehtml(page)
 			end
 		when 2 # tagattrname
 			case c
-			when '>'
+			when ?>
 				curelem.attr[curword.downcase] = '' if curword.length > 0
 				if curelem.type == 'script'
 					curword = curelem.to_s
@@ -107,14 +107,14 @@ def parsehtml(page)
 				parse << curelem
 				curword = ''
 				state = 0
-			when '/'
+			when ?/
 				laststate = state
 				state = 9
-			when ' '
+			when ?\ 
 				curattrname = curword.downcase
 				curword = ''
 				state = 3
-			when '='
+			when ?=
 				curattrname = curword.downcase
 				curword = ''
 				state = 4
@@ -123,7 +123,7 @@ def parsehtml(page)
 			end
 		when 3 # aftertagattrname
 			case c
-			when '>'
+			when ?>
 				curelem.attr[curattrname] = ''
 				if curelem.type == 'script'
 					curword = curelem.to_s
@@ -132,10 +132,10 @@ def parsehtml(page)
 				end
 				parse << curelem
 				state = 0
-			when '/'
+			when ?/
 				laststate = state
 				state = 9
-			when '='
+			when ?=
 				state = 4
 			else
 				curelem.attr[curattrname] = ''
@@ -144,7 +144,7 @@ def parsehtml(page)
 			end
 		when 4 # beforetagattrval
 			case c
-			when '>'
+			when ?>
 				curelem.attr[curattrname] = ''
 				if curelem.type == 'script'
 					curword = curelem.to_s
@@ -153,14 +153,14 @@ def parsehtml(page)
 				end
 				parse << curelem
 				state = 0
-			when '/'
+			when ?/
 				laststate = state
 				state = 9
-			when '"'
+			when ?"
 				state = 6
-			when "'"
+			when ?'
 				state = 7
-			when ' '
+			when ?\ 
 				# nop
 			else
 				curword << c
@@ -168,7 +168,7 @@ def parsehtml(page)
 			end
 		when 5 # attrval
 			case c
-			when '>'
+			when ?>
 				curelem.attr[curattrname] = curword
 				if curelem.type == 'script'
 					curword = curelem.to_s
@@ -178,10 +178,10 @@ def parsehtml(page)
 				parse << curelem
 				curword = ''
 				state = 0
-			when '/'
+			when ?/
 				laststate = state
 				state = 9
-			when ' '
+			when ?\ 
 				curelem.attr[curattrname] = curword
 				curword = ''
 				state = 2
@@ -190,22 +190,22 @@ def parsehtml(page)
 			end
 		when 6 # attrval, doublequote
 			case c
-			when '"'
+			when ?"
 				state = 5
 			else
 				curword << c
 			end
 		when 7 # attrval, singlequote
 			case c
-			when "'"
+			when ?'
 				state = 5
 			else
 				curword << c
 			end
 		when 8 # comment
 			case c
-			when '>'
-				if (curword[-1].chr == '-' and curword[-2].chr == '-')
+			when ?>
+				if (curword[-1] == ?- and curword[-2] == ?-)
 					curelem.type = 'Comment'
 					curelem.attr['content'] = '<!--'+curword+'>'
 					parse << curelem
@@ -218,16 +218,17 @@ def parsehtml(page)
 				curword << c
 			end
 		when 9 # wait for end of tag
-			if (c != '>')
-				curword << '/'
+			if (c != ?>)
+				curword << ?/
+			else
+				curelem.empty = true
 			end
 			state = laststate
-			c = c[0]
 			redo
 		when 10 # <script
-			if (c == '>' and curword =~ /<\s*\/\s*script\s*$/i)
+			if (c == ?> and curword =~ /<\s*\/\s*script\s*$/i)
 				curelem.type = 'Script'
-				curelem.attr['content'] = curword+'>'
+				curelem.attr['content'] = curword << c
 				parse << curelem
 				curword = ''
 				state = 0
