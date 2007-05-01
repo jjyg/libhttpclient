@@ -15,7 +15,7 @@ class HtmlElement
 end
 
 def parsehtml(page)
-	parse = Array.new
+	parse = Array.new unless block_given?
 	curelem = nil
 	curword = ''
 	curattrname = nil
@@ -47,8 +47,12 @@ def parsehtml(page)
 				if curword.length > 0
 					curelem = HtmlElement.new
 					curelem.type = 'String'
-					curelem.attr['content'] = curword
-					parse << curelem
+					curelem.attr['content'] = curword.strip
+					if parse
+						parse << curelem
+					else
+						yield curelem
+					end
 				end
 				curword = ''
 				curelem = HtmlElement.new
@@ -73,7 +77,11 @@ def parsehtml(page)
 					state = 10
 					next
 				end
-				parse << curelem
+				if parse
+					parse << curelem
+				else
+					yield curelem
+				end
 				curword = ''
 				state = 0
 			when ?/
@@ -103,8 +111,12 @@ def parsehtml(page)
 					state = 10
 					next
 				end
-				
-				parse << curelem
+			
+				if parse
+					parse << curelem
+				else
+					yield curelem
+				end
 				curword = ''
 				state = 0
 			when ?/
@@ -130,7 +142,11 @@ def parsehtml(page)
 					state = 10
 					next
 				end
-				parse << curelem
+				if parse
+					parse << curelem
+				else
+					yield curelem
+				end
 				state = 0
 			when ?/
 				laststate = state
@@ -151,7 +167,11 @@ def parsehtml(page)
 					state = 10
 					next
 				end
-				parse << curelem
+				if parse
+					parse << curelem
+				else
+					yield curelem
+				end
 				state = 0
 			when ?/
 				laststate = state
@@ -175,7 +195,11 @@ def parsehtml(page)
 					state = 10
 					next
 				end
-				parse << curelem
+				if parse
+					parse << curelem
+				else
+					yield curelem
+				end
 				curword = ''
 				state = 0
 			when ?/
@@ -208,7 +232,11 @@ def parsehtml(page)
 				if (curword[-1] == ?- and curword[-2] == ?-)
 					curelem.type = 'Comment'
 					curelem.attr['content'] = '<!--'+curword+'>'
-					parse << curelem
+					if parse
+						parse << curelem
+					else
+						yield curelem
+					end
 					curword = ''
 					state = 0
 				else
@@ -229,7 +257,11 @@ def parsehtml(page)
 			if (c == ?> and curword =~ /<\s*\/\s*script\s*$/i)
 				curelem.type = 'Script'
 				curelem.attr['content'] = curword << c
-				parse << curelem
+				if parse
+					parse << curelem
+				else
+					yield curelem
+				end
 				curword = ''
 				state = 0
 			else
@@ -237,5 +269,15 @@ def parsehtml(page)
 			end
 		end
 	}
+	if state == 0 and curword.length > 0
+		curelem = HtmlElement.new
+		curelem.type = 'String'
+		curelem.attr['content'] = curword.strip
+		if parse
+			parse << curelem
+		else
+			yield curelem
+		end
+	end
 	return parse
 end
