@@ -118,7 +118,7 @@ class HttpClient
 		return @curpage if url == @cur_url
 		
 		if not @allowbadget and not recursive and not @get_url_allowed.empty? and not @get_url_allowed.include?(url.sub(/\?.*$/, ''))
-			puts "Forbidden to get #{url} from here ! We are at #{@cur_url}, allowed list: #{@get_url_allowed.sort.join(', ')}"
+			puts "Forbidden to get #{url} from here ! We are at #{@cur_url}, allowed list: #{@get_url_allowed.sort.join(', ')}" rescue nil
 			raise HttpClientBadGet.new(url)
 		end
 		
@@ -168,7 +168,7 @@ class HttpClient
 			end
 		}
 		if not @allowbadget and not allow
-			puts "Form action unknown here ! cur: #{@cur_url}, action: #{url}"
+			puts "Form action unknown here ! cur: #{@cur_url}, action: #{url}" rescue nil
 			raise HttpClientBadPost.new(url)
 		end
 		
@@ -209,8 +209,8 @@ class HttpClient
 		case page.status
 		when 301, 302
 			newurl = page.headers['location'].sub(/#[^?]*/, '')
-#			puts "#{url} => 302 to #{newurl}" if newurl !~ /^[0-9a-zA-Z.:\/-]*$/ and page.status == 302
-			puts "#{url} => 301 to #{newurl}" if page.status == 301
+#			puts "#{url} => 302 to #{newurl}" if newurl !~ /^[0-9a-zA-Z.:\/-]*$/ and page.status == 302 rescue nil
+			puts "#{url} => 301 to #{newurl}" if page.status == 301 rescue nil
 			case newurl
 			when /^http:\/\/#{@http_s.host}(.*)$/, /^(\/.*)$/
 				newurl = $1
@@ -222,7 +222,7 @@ class HttpClient
 				@get_url_allowed << newurl.sub(/[?#].*$/, '') if not recursive
 				return get(newurl, 0, recursive)
 			when /^https?:\/\//
-				puts "Will no go to another site ! (#{url} is a 302 to #{newurl})"
+				puts "Will no go to another site ! (#{url} is a 302 to #{newurl})" rescue nil
 				return page
 			else
 				raise RuntimeError.new("No location for 302 at #{url}!!!") if not newurl
@@ -231,13 +231,13 @@ class HttpClient
 				return get(newurl, 0, recursive)
 			end
 		when 401, 403, 404
-			puts "Error #{page.status} with url #{url} from #{@referer}" if not @bogus_site
+			puts "Error #{page.status} with url #{url} from #{@referer}" if not @bogus_site rescue nil
 			@cache[url] = page
 			return page
 		when 200
 			# noreturn
 		else
-			puts "Error code #{page.status} with #{url} from #{@referer} :\n#{page}"
+			puts "Error code #{page.status} with #{url} from #{@referer} :\n#{page}" rescue nil
 			return page
 		end
 			
@@ -313,7 +313,7 @@ class HttpClient
 					u = HttpServer.urlenc(abs_path(u))
 				end
 				to_fetch_temp << u
-				puts "Debug: to_fetch add catchall #{u.inspect}" if u !~ /^[a-zA-Z0-9._\/?=&;#%!-]*$/ and not @cache.has_key?(u) and not @bogus_site
+				puts "Debug: to_fetch add catchall #{u.inspect}" if u !~ /^[a-zA-Z0-9._\/?=&;#%!-]*$/ and not @cache.has_key?(u) and not @bogus_site rescue nil
 			end
 		}
 		
@@ -338,7 +338,7 @@ class HttpClient
 					nu = abs_path(u).sub(/[?#].*$/, '')
 					@get_url_allowed << nu
 				end
-				puts "Debug: get_allow add catchall #{u.inspect}" if u !~ /^[a-zA-Z0-9._\/=?&;#%!-]*$/ and not @bogus_site
+				puts "Debug: get_allow add catchall #{u.inspect}" if u !~ /^[a-zA-Z0-9._\/=?&;#%!-]*$/ and not @bogus_site rescue nil
 			end
 		}
 
@@ -440,14 +440,14 @@ class PostForm
 	def verify(postdata, debug=false)
 		@mandatory.each_key { |k|
 			if @mandatory[k] != postdata[k]
-				puts "verif postdata: mandatory var #{k.inspect} set to #{postdata[k].inspect}, should be #{@mandatory[k].inspect}" if $DEBUG
+				puts "verif postdata: mandatory var #{k.inspect} set to #{postdata[k].inspect}, should be #{@mandatory[k].inspect}" if $DEBUG rescue nil
 				return false
 			end
 		}
 		
 		postdata.each_key { |k|
 			if not @vars.has_key?(k)
-				puts "Postdata check: posting unknown variable #{k.inspect}" if $DEBUG
+				puts "Postdata check: posting unknown variable #{k.inspect}" if $DEBUG rescue nil
 				return false
 			end
 		}
@@ -455,13 +455,13 @@ class PostForm
 		@vars.each_key { |k|
 			if not postdata[k] # var not submitted: check for a default value
 				if not @vars[k]
-					puts "Postdata check: unfilled varname #{k.inspect} - no default" if $DEBUG
+					puts "Postdata check: unfilled varname #{k.inspect} - no default" if $DEBUG rescue nil
 					return false
 				else
 					dval = @vars[k]
 					dval = dval[0] if dval.class == Array
 					postdata[k] = dval unless @opt_vars.to_a.include? k
-					puts "Postdata check: set default value '#{dval.inspect}' for #{k.inspect}" if $DEBUG
+					puts "Postdata check: set default value '#{dval.inspect}' for #{k.inspect}" if $DEBUG rescue nil
 				end
 			end
 		}
