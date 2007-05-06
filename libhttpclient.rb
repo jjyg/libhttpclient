@@ -70,6 +70,7 @@ class HttpClient
 
 	def abs_path(url, update_class = false)
 		path = @path.clone
+		url = $1 if url =~ /^http:\/\/#{Regexp.escape @http_s.host}(\/.*)/
 		if (url =~ /^(\/(?:[^?]+\/)?)(.*?)$/)
 			# /, /url, /url/url, /url/url?url/url
 			path = $1

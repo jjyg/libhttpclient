@@ -202,7 +202,7 @@ class HttpServer
 		end
 
 		hostre = '[\w.-]+|\[[a-fA-F0-9:]+\]'
-                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:http-proxy://(\w+:\w+@)?(#{hostre})(:\d+)?/)?http(s)?://(\w+:\w+@)?([\w.-]+@)?(#{hostre})(:\d+)?/?$}.match(url)
+                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:http-proxy://(\w+:\w+@)?(#{hostre})(:\d+)?/)?http(s)?://(\w+:\w+@)?([\w.-]+@)?(#{hostre})(:\d+)?}.match(url)
 
                 @proxylp, @proxyh, proxyp, @use_ssl, @loginpass, vhost, @host, port = md.captures
 		@proxyh = @proxyh[1..-2] if @proxyh and @proxyh[0] == ?[
