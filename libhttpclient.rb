@@ -274,7 +274,7 @@ class HttpClient
 				tg = url.sub(/[?#].*$/, '')
 				if e.attr['action'] and e.attr['action'].length > 0
 					tg = e.attr['action']
-					tg = abs_path(tg) if tg !~ /^https?:\/\//
+					tg = abs_path(tg) if tg !~ /^https?:\/\// or tg =~ /^http:\/\/#{Regexp.escape @http_s.host}\//
 				end
 				if e.attr['method'] and e.attr['method'].downcase == 'post'
 					postform = PostForm.new tg unless postform and postform.url == tg
