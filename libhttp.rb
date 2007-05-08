@@ -343,6 +343,7 @@ EOE
 	
 	def setup_request_headers(headers)
 		headers['Host'] = @host
+		headers['Host'] += ":#@port" if @port != 80
 		headers['User-Agent'] = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0'
 		headers['Accept'] = 'text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5'
 		headers['Connection'] = 'keep-alive' if not headers['Connection']
@@ -355,7 +356,7 @@ EOE
 	def get(page, headers = Hash.new)
 		setup_request_headers(headers)
 		
-		req = ["GET #{'http://' << @host if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		req = ["GET #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n"
 		begin
 			s = send_req req
