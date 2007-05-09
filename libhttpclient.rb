@@ -94,7 +94,7 @@ class HttpClient
 			path += relpath
 		else
 			# url, url?url/url
-			page = url
+			page = url.dup
 		end
 		
 		page.sub!(/#[^?]*/, '')
@@ -300,7 +300,7 @@ class HttpClient
 		to_fetch.each { |u|
 			case u
 			when '', nil
-			when /^(?:http:\/\/#{@http_s.host})?(\/[^?]*)?(?:\?(.*))/i
+			when /^(?:http:\/\/#{@http_s.host})?(\/[^?]*)(?:\?(.*))?/i
 				if $2
 					to_fetch_temp << (HttpServer.urlenc($1) + '?' + $2)
 				else

@@ -424,8 +424,8 @@ EOE
 		retried = 0
 	begin
 		if not @socket or not ( @socket.write req ; s = @socket.gets )
-			@socket.shutdown rescue nil
-			@socket.close rescue nil
+			@socket.shutdown if @socket rescue nil
+			@socket.close if @socket rescue nil
 
 			connect_socket
 
