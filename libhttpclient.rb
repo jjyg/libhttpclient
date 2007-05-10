@@ -306,7 +306,7 @@ class HttpClient
 				else
 					to_fetch_temp << HttpServer.urlenc($1)
 				end
-			when /^https?:\/\//i, /^mailto:/i, /^javascript/i, /\);?$/
+			when /^(https?|irc):\/\//i, /^mailto:/i, /^javascript/i, /\);?$/
 			else
 				if u =~ /([^?]*)\?(.*)/
 					u = HttpServer.urlenc(abs_path($1)) + '?' + $2
@@ -331,9 +331,7 @@ class HttpClient
 			when /^(\/[^?#]*)/
 				@get_url_allowed << $1
 			when nil
-			when /^https?:\/\//i
-			when /^mailto:/i
-			when /^javascript/i, /\);?$/
+			when /^(https?|irc):\/\//i, /^mailto:/i, /^javascript/i, /\);?$/
 			else
 				if u.length > 0
 					nu = abs_path(u).sub(/[?#].*$/, '')
