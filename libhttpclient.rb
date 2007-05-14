@@ -127,7 +127,7 @@ class HttpClient
 			@history << url
 			diff = @next_fetch.to_f - Time.now.to_f
 			sleep diff if diff > 0
-			timeout ||= (rand(8) == 0) ? (1+rand(40)) : (1+rand(6))
+			timeout ||= (rand(8) == 0) ? (1+rand(40)) : (rand(6))
 				
 			@next_fetch = Time.now + timeout
 			@cur_url = url
@@ -174,10 +174,10 @@ class HttpClient
 		end
 		
 		
-		pretimeout ||= (rand(5) == 1) ? (3+rand(25)) : (1+rand(4))
+		pretimeout ||= (rand(5) == 1) ? (3+rand(25)) : (rand(4))
 		diff = @next_fetch.to_i - Time.now.to_i + pretimeout
 		sleep diff if diff > 0
-		timeout ||= (rand(4) == 1) ? (3+rand(15)) : (1+rand(4))
+		timeout ||= (rand(4) == 1) ? (3+rand(15)) : (rand(4))
 		@next_fetch = Time.now + timeout
 
 		@cur_url = url
