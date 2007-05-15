@@ -111,7 +111,7 @@ class HttpClient
 		@next_fetch = Time.now
 	end
 	
-	def get(url, timeout=nil, recursive=false)
+	def get(url, timeout=nil, headers={}, recursive=false)
 		url.gsub!(' ', '%20')
 
 		url = abs_path(url, (not recursive))
@@ -133,7 +133,7 @@ class HttpClient
 			@cur_url = url
 		end
 
-		page = @http_s.get(url, sess_headers)
+		page = @http_s.get(url, sess_headers.merge(headers))
 		page = analyse_page(url, page, recursive)
 
 		@curpage = page if not recursive
@@ -221,7 +221,7 @@ class HttpClient
 					gdata.split('&').map{ |e| e.split('=', 2).map{ |k| HttpServer.urlenc(k) }.join('=') }.join('&')
 				end
 				@get_url_allowed << newurl.sub(/[?#].*$/, '') if not recursive
-				return get(newurl, 0, recursive)
+				return get(newurl, 0, {}, recursive)
 			when /^https?:\/\//
 				puts "Will no go to another site ! (#{url} is a 302 to #{newurl})" rescue nil
 				return page
@@ -229,7 +229,7 @@ class HttpClient
 				raise RuntimeError.new("No location for 302 at #{url}!!!") if not newurl
 				newurl = abs_path(newurl)
 				@get_url_allowed << newurl.sub(/[?#].*$/, '') if not recursive
-				return get(newurl, 0, recursive)
+				return get(newurl, 0, {}, recursive)
 			end
 		when 401, 403, 404
 			puts "Error #{page.status} with url #{url} from #{@referer}" if not @bogus_site rescue nil
@@ -321,7 +321,7 @@ class HttpClient
 		to_fetch = to_fetch_temp.uniq - @cache.keys
 #puts "for #{url}: recursing to #{to_fetch.sort.inspect}"
 		to_fetch.each { |u|
-			get(u, 0, true)
+			get(u, 0, {}, true)
 		}
 		
 		get_allow.each { |u|

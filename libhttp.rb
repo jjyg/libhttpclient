@@ -155,6 +155,7 @@ class HttpResp
 		maynl = false
 		txt = []
 		nl = "\n"
+		@parse ||= parsehtml content
 		@parse.each { |e|
 			case e.type
 			when 'body':  inbody = true ; next
