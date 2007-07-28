@@ -423,6 +423,7 @@ EOE
 	def send_req(req)
 		s = nil
 		retried = 0
+		puts 'send_req:', req if $DEBUG
 	begin
 		if not @socket or not ( @socket.write req ; s = @socket.gets )
 			@socket.shutdown if @socket rescue nil
