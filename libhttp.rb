@@ -227,6 +227,14 @@ class HttpServer
 		end.tr(' ', '+')
 	end
 
+	def self.get_form_url(url, vars)
+		vars.empty? ? url : (
+			url + '?' + vars.map { |k, v|
+				"#{urlenc k}=#{urlenc(htmlentitiesdec(v.to_s))}"
+			}.join('&')
+		)
+	end
+
 	# This takes the long string til EOE, matches it with scan, and build a hash from that
 	# > 255 omitted
 	HTMLENTITIES = Hash[*<<EOE.scan(/ENTITY (\S+)\s+CDATA "&#(\d+);"/).map { |k, v| [k, v.to_i] }.flatten]

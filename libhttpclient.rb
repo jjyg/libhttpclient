@@ -163,7 +163,7 @@ class HttpClient
 		
 		allow = false
 		@post_allowed.each { |p|
-			if p.url == url
+			if p.url == url and p.method == 'post'
 				allow = true
 				p.verify(postdata)
 			end
@@ -276,9 +276,11 @@ class HttpClient
 					tg = e.attr['action']
 					tg = abs_path(tg) if tg !~ /^https?:\/\// or tg =~ /^http:\/\/#{Regexp.escape @http_s.host}\//
 				end
+				postform = PostForm.new tg unless postform and postform.url == tg
 				if e.attr['method'] and e.attr['method'].downcase == 'post'
-					postform = PostForm.new tg unless postform and postform.url == tg
+					postform.method = 'post'
 				else
+					postform.method = 'get'
 					get_allow << tg
 				end
 			when '/form'
@@ -361,7 +363,7 @@ class HttpClient
 end
 
 class PostForm
-	attr_reader :url, :vars, :mandatory
+	attr_accessor :url, :vars, :mandatory, :method
 	
 	# vars is a hash, key = name of each var for the form,
 	#   value = 'blabla' if var has default value (for input and textarea)
