@@ -11,7 +11,7 @@ require 'openssl'
 rescue LoadError
 end
 
-class Timeout
+class HTTP_Timeout
 	def initialize(value)
 		@value = value.to_i
 		@value_init = @value
@@ -382,7 +382,7 @@ EOE
 		setup_request_headers(headers)
 		headers['Content-type'] ||= 'application/octet-stream'
 		headers['Content-length'] = postraw.length
-		req = ["POST #{'http://' << @host if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		req = ["POST #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n" + postraw
 		
 		begin
@@ -454,7 +454,7 @@ EOE
 	def read_resp(status)
 		page = HttpResp.new
 		page.answer.replace(status)
-		timer = Timeout.new(@timeout)
+		timer = HTTP_Timeout.new(@timeout)
 		close_sock = true
 		reader = Thread.new {
 			# parse le header renvoyé par le serveur
