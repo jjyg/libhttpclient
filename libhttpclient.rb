@@ -127,7 +127,7 @@ class HttpClient
 			@history << url
 			diff = @next_fetch.to_f - Time.now.to_f
 			sleep diff if diff > 0
-			timeout ||= (rand(8) == 0) ? (1+rand(40)) : (rand(6))
+			timeout ||= 1
 				
 			@next_fetch = Time.now + timeout
 			@cur_url = url
@@ -141,12 +141,12 @@ class HttpClient
 		return page
 	end
 
-	def post_raw(url, postdata, headers={})
+	def post_raw(url, postdata, headers={}, timeout=nil)
 		url = abs_path(url, true)
 		
 		diff = @next_fetch.to_i - Time.now.to_i
 		sleep diff if diff > 0
-		timeout = (1+rand(6))
+		timeout ||= 1
 		@next_fetch = Time.now + timeout
 
 		@cur_url = url
@@ -174,10 +174,10 @@ class HttpClient
 		end
 		
 		
-		pretimeout ||= (rand(5) == 1) ? (3+rand(25)) : (rand(4))
+		pretimeout ||= 1
 		diff = @next_fetch.to_i - Time.now.to_i + pretimeout
 		sleep diff if diff > 0
-		timeout ||= (rand(4) == 1) ? (3+rand(15)) : (rand(4))
+		timeout ||= 1
 		@next_fetch = Time.now + timeout
 
 		@cur_url = url
