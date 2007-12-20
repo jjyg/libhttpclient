@@ -195,17 +195,17 @@ class HttpResp
 end
 
 class HttpServer
-	attr_accessor :timeout
-	attr_reader :host
+	attr_accessor :host, :port, :vhost, :vport, :loginpass, :proxyh, :proxyp, :proxylp, :use_ssl, :socket, :timeout
+
         def initialize(url)
 		if not url.include? '://'
-			url = "http://#{url}"
+			url = "http://#{url}/"
 		end
 
 		hostre = '[\w.-]+|\[[a-fA-F0-9:]+\]'
-                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:http-proxy://(\w+:\w+@)?(#{hostre})(:\d+)?/)?http(s)?://(\w+:\w+@)?([\w.-]+@)?(#{hostre})(:\d+)?}.match(url)
+                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:http-proxy://(\w*:\w*@)?(#{hostre})(:\d+)?/)?http(s)?://(\w*:\w*@)?(?:([\w.-]+)(:\d+)?@)?(#{hostre})(:\d+)?/}.match(url)
 
-                @proxylp, @proxyh, proxyp, @use_ssl, @loginpass, vhost, @host, port = md.captures
+                @proxylp, @proxyh, proxyp, @use_ssl, @loginpass, vhost, vport, @host, port = md.captures
 		@proxyh = @proxyh[1..-2] if @proxyh and @proxyh[0] == ?[
 		@host   = @host[1..-2]   if @host[0] == ?[
 
@@ -213,8 +213,10 @@ class HttpServer
                 @port = port ? port[1..-1].to_i : (@use_ssl ? 443 : 80)
 
                 @proxylp = 'Basic '+[@proxylp.chop].pack('m').chomp if @proxylp
+		@loginpass = nil if @loginpass == ':@'
                 @loginpass = 'Basic '+[@loginpass.chop].pack('m').chomp if @loginpass
-                @vhost = vhost ? vhost.chop : @host
+                @vhost = vhost ? vhost : @host
+		@vport = vport ? vport[1..-1].to_i : @port
 
                 @socket = nil
 
@@ -351,8 +353,8 @@ EOE
 	end
 	
 	def setup_request_headers(headers)
-		headers['Host'] = @host
-		headers['Host'] += ":#@port" if @port != 80
+		headers['Host'] = @vhost
+		headers['Host'] += ":#@vport" if @vport != 80
 		headers['User-Agent'] = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0'
 		headers['Accept'] = 'text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5'
 		headers['Connection'] = 'keep-alive' if not headers['Connection']
@@ -365,7 +367,7 @@ EOE
 	def get(page, headers = Hash.new)
 		setup_request_headers(headers)
 		
-		req = ["GET #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		req = ["GET #{'http://' << (@vhost + (@vport != 80 ? ":#@vport" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n"
 		begin
 			s = send_req req
@@ -382,7 +384,7 @@ EOE
 		setup_request_headers(headers)
 		headers['Content-type'] ||= 'application/octet-stream'
 		headers['Content-length'] = postraw.length
-		req = ["POST #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		req = ["POST #{'http://' << (@vhost + (@vport != 80 ? ":#@vport" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n" + postraw
 		
 		begin
@@ -453,7 +455,7 @@ EOE
 
 	def read_resp(status)
 		page = HttpResp.new
-		page.answer.replace(status)
+		page.answer.replace(status||'')
 		timer = HTTP_Timeout.new(@timeout)
 		close_sock = true
 		reader = Thread.new {

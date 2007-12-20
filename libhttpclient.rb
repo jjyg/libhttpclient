@@ -20,7 +20,7 @@ class HttpClient
 
 	def initialize(url)
 		if not url.include? '://'
-			url = "http://#{url}"
+			url = "http://#{url}/"
 		end
 		if ENV['http_proxy'] =~ /^http:\/\/(.*?)\/?$/
 			url = "http-proxy://#$1/#{url}"
@@ -246,7 +246,7 @@ class HttpClient
 		
 		return page if recursive or (page.headers['content-type'] and page.headers['content-type'] !~ /text\/(ht|x)ml/)
 		
-		@referer = 'http://' + @http_s.host + url
+		@referer = 'http://' + @http_s.vhost + url
 		
 		@get_url_allowed.clear
 		@get_url_allowed << url.sub(/[#?].*$/, '')
