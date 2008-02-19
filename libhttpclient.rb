@@ -2,6 +2,7 @@
 # librairie emulant un client http
 #
 # par Yoann Guillot - 2004
+# fixes by flyoc
 #
 
 require 'libhttp'
@@ -15,7 +16,7 @@ class HttpClientBadPost < RuntimeError
 end
 
 class HttpClient
-	attr_reader :path, :cookie, :get_url_allowed, :post_allowed, :cache, :cur_url, :curpage, :history, :links, :http_s
+	attr_accessor :path, :cookie, :get_url_allowed, :post_allowed, :cache, :cur_url, :curpage, :history, :links, :http_s
 	attr_accessor :bogus_site, :referer, :allowbadget
 
 	def initialize(url)
@@ -273,7 +274,11 @@ class HttpClient
 				# default target
 				tg = url.sub(/[?#].*$/, '')
 				if e.attr['action'] and e.attr['action'].length > 0
-					tg = e.attr['action']
+					if e.attr['action'][0] == ??
+						tg = tg.sub(/^.*\//, '') + e.attr['action']
+					else
+						tg = e.attr['action']
+					end
 					tg = abs_path(tg) if tg !~ /^https?:\/\// or tg =~ /^http:\/\/#{Regexp.escape @http_s.host}\//
 				end
 				postform = PostForm.new tg unless postform and postform.url == tg
@@ -354,7 +359,7 @@ class HttpClient
 		"Cookies: #{@cookie.inspect}\n"+
 		"Cache: #{@cache.keys.sort.join(', ')}\n"+
 		"Get allowed: #{@get_url_allowed.sort.join(', ')}\n"+
-		"post allowed: #{@post_allowed.sort.join(', ')}"
+		"post allowed:\n#{@post_allowed.join("\n")}"
 	end
 
 	def inspect
@@ -401,7 +406,7 @@ class PostForm
 					(@vars[e.attr['name']] ||= []) << e.attr['value']
 				else
 					(@opt_vars ||= []) << e.attr['name'] if e.attr['type'].downcase == 'checkbox'
-					@vars[e.attr['name']] = e.attr['value']
+					@vars[e.attr['name']] = e.attr['value'] || ''
 					@mandatory[e.attr['name']] = e.attr['value'] if e.attr['value'] and e.attr['type'] and e.attr['type'].downcase == 'hidden' and e.attr['name'] !~ /\[\]/
 				end
 			elsif e.attr['type'].downcase == 'image'
