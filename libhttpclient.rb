@@ -2,7 +2,7 @@
 # librairie emulant un client http
 #
 # par Yoann Guillot - 2004
-# fixes by flyoc
+# fixes by flyoc (surtout des bug reports en fait !) (merci quand meme.)
 #
 
 require 'libhttp'
@@ -465,11 +465,11 @@ class PostForm
 					return false
 				else
 					dval = @vars[k]
-					dval = dval[0] if dval.class == Array
 					postdata[k] = dval unless @opt_vars.to_a.include? k
 					puts "Postdata check: set default value '#{dval.inspect}' for #{k.inspect}" if $DEBUG rescue nil
 				end
 			end
+			postdata[k] = postdata[k].first if postdata[k].kind_of? ::Array
 		}
 		
 		return true
