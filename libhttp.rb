@@ -367,7 +367,7 @@ EOE
 	def get(page, headers = Hash.new)
 		setup_request_headers(headers)
 		
-		req = ["GET #{'http://' << (@vhost + (@vport != 80 ? ":#@vport" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		req = ["GET #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n"
 		begin
 			s = send_req req
@@ -384,7 +384,7 @@ EOE
 		setup_request_headers(headers)
 		headers['Content-type'] ||= 'application/octet-stream'
 		headers['Content-length'] = postraw.length
-		req = ["POST #{'http://' << (@vhost + (@vport != 80 ? ":#@vport" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		req = ["POST #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n" + postraw
 		
 		begin
