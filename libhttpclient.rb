@@ -2,7 +2,8 @@
 # librairie emulant un client http
 #
 # par Yoann Guillot - 2004
-# fixes by flyoc (surtout des bug reports en fait !) (merci quand meme.)
+# fixes by Flyoc (surtout des bug reports en fait !) (merci quand meme.)
+# yay, un patch <area>
 #
 
 require 'libhttp'
@@ -262,11 +263,9 @@ class HttpClient
 			case e.type
 			when 'img', 'Script'
 				to_fetch << e.attr['src']
-			when 'iframe'
+			when 'frame', 'iframe'
 				get_allow << e.attr['src']
-			when 'frame'
-				get_allow << e.attr['src']
-			when 'a'
+			when 'a', 'area'
 				get_allow << e.attr['href']
 			when 'link'
 				to_fetch << e.attr['href']
@@ -401,6 +400,7 @@ class PostForm
 	def sync_elem(e)
 		case e.type
 		when 'input'
+			e.attr['type'] ||= 'text'
 			if e.attr['name']
 				if e.attr['type'].downcase == 'radio'
 					(@vars[e.attr['name']] ||= []) << e.attr['value']
