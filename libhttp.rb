@@ -62,7 +62,7 @@ class HttpResp
 				while (File.exist?(tmpname+ext.to_s))
 					ext = rand(10000)
 				end
-				file = File.new(tmpname+ext.to_s, 'w+')
+				file = File.new(tmpname+ext.to_s, 'wb+')
 				file.write(@content_raw)
 				file.rewind
 				zfile = Zlib::GzipReader.new(file)
