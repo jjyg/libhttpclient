@@ -174,11 +174,16 @@ class HttpResp
 				txt << ' ' if maynl
 				txt << HttpServer.htmlentitiesdec(e.attr['content'].gsub(/(?:&nbsp;|\s)+/, ' ').strip)
 				maynl = true
+			when 'optgroup'
+				txt << nl if maynl
+				txt << HttpServer.htmlentitiesdec(e.attr['label'])
+				txt << nl
+				maynl = false
 				
 			when 'b', '/b', 'td', '/td', 'span', '/span', 'font', '/font', 'Comment', 'Script'
 				nil
 		
-			when 'br', 'p', '/p', 'table', '/table', 'tr', '/tr', 'tbody', '/tbody', 'div', '/div', 'img'
+			when 'br', 'p', '/p', 'table', '/table', 'tr', '/tr', 'tbody', '/tbody', 'div', '/div', 'img', '/option'
 				txt << nl if maynl
 				maynl = false
 			
