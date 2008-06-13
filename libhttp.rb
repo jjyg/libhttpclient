@@ -180,10 +180,10 @@ class HttpResp
 				txt << nl
 				maynl = false
 				
-			when 'b', '/b', 'td', '/td', 'span', '/span', 'font', '/font', 'Comment', 'Script'
+			when 'b', '/b', 'td', '/td', 'span', '/span', 'font', '/font', 'Comment', 'Script', 'img'
 				nil
 		
-			when 'br', 'p', '/p', 'table', '/table', 'tr', '/tr', 'tbody', '/tbody', 'div', '/div', 'img', '/option'
+			when 'br', 'p', '/p', 'table', '/table', 'tr', '/tr', 'tbody', '/tbody', 'div', '/div', '/option'
 				txt << nl if maynl
 				maynl = false
 			
