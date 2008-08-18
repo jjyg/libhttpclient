@@ -215,7 +215,7 @@ class HttpClient
 #			puts "#{url} => 302 to #{newurl}" if newurl !~ /^[0-9a-zA-Z.:\/-]*$/ and page.status == 302 rescue nil
 			puts "#{url} => 301 to #{newurl}" if page.status == 301 rescue nil
 			case newurl
-			when /^http:\/\/#{@http_s.host}(.*)$/, /^(\/.*)$/
+			when /^http#{'s' if @http_s.use_ssl}:\/\/#{@http_s.host}(?::#{@http_s.use_ssl ? 443 : 80})?(.*)$/, /^(\/.*)$/
 				newurl = $1
 				if newurl =~ /^(.*?)\?(.*)$/
 					newurl, gdata = $1, $2
