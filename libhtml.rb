@@ -72,7 +72,8 @@ def parsehtml(page)
 			case c
 			when ?>
 				curelem.type = curword.downcase
-				if curelem.type == 'script'
+				case curelem.type
+				when 'script', 'style'
 					curword = curelem.to_s
 					state = 10
 					next
@@ -106,7 +107,8 @@ def parsehtml(page)
 			case c
 			when ?>
 				curelem.attr[curword.downcase] = '' if curword.length > 0
-				if curelem.type == 'script'
+				case curelem.type
+				when 'script', 'style'
 					curword = curelem.to_s
 					state = 10
 					next
@@ -137,7 +139,8 @@ def parsehtml(page)
 			case c
 			when ?>
 				curelem.attr[curattrname] = ''
-				if curelem.type == 'script'
+				case curelem.type	
+				when 'script', 'style'
 					curword = curelem.to_s
 					state = 10
 					next
@@ -162,7 +165,8 @@ def parsehtml(page)
 			case c
 			when ?>
 				curelem.attr[curattrname] = ''
-				if curelem.type == 'script'
+				case curelem.type
+				when 'script', 'style'
 					curword = curelem.to_s
 					state = 10
 					next
@@ -190,7 +194,8 @@ def parsehtml(page)
 			case c
 			when ?>
 				curelem.attr[curattrname] = curword
-				if curelem.type == 'script'
+				case curelem.type
+				when 'script', 'style'
 					curword = curelem.to_s
 					state = 10
 					next
@@ -254,8 +259,8 @@ def parsehtml(page)
 			state = laststate
 			redo
 		when 10 # <script
-			if (c == ?> and curword =~ /<\s*\/\s*script\s*$/i)
-				curelem.type = 'Script'
+			if (c == ?> and curword =~ /<\s*\/\s*#{curelem.type}\s*$/i)
+				curelem.type.capitalize!
 				curelem.attr['content'] = curword << c
 				if parse
 					parse << curelem
