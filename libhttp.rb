@@ -183,7 +183,7 @@ class HttpResp
 			when 'b', '/b', 'td', '/td', 'span', '/span', 'font', '/font', 'Comment', 'Script', 'img'
 				nil
 		
-			when 'br', 'p', '/p', 'table', '/table', 'tr', '/tr', 'tbody', '/tbody', 'div', '/div', '/option'
+			when 'br', 'p', '/p', 'table', '/table', 'tr', '/tr', 'tbody', '/tbody', 'div', '/div', '/option', 'li', '/li', 'ul', '/ul'
 				txt << nl if maynl
 				maynl = false
 			

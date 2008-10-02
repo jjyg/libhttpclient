@@ -163,7 +163,7 @@ class HttpClient
 	def post(url, postdata, timeout=nil, pretimeout=nil)
 		url = abs_path(url, true)
 		
-		allow = false
+		allow = @cur_url ? false : true
 		@post_allowed.each { |p|
 			if p.url == url and p.method == 'post'
 				allow = true
@@ -300,7 +300,7 @@ class HttpClient
 		}
 		@post_allowed << postform if postform
 
-		@links = to_fetch + get_allow unless recursive
+		@links = (to_fetch + get_allow).compact.uniq unless recursive
 		
 		to_fetch_temp = Array.new
 		to_fetch.each { |u|
@@ -312,7 +312,7 @@ class HttpClient
 				else
 					to_fetch_temp << HttpServer.urlenc($1)
 				end
-			when /^(https?|irc):\/\//i, /^mailto:/i, /^javascript/i, /\);?$/
+			when /^(https?|irc):\/\//i, /^(mailto|magnet):/i, /^javascript/i, /\);?$/
 			else
 				if u =~ /([^?]*)\?(.*)/
 					u = HttpServer.urlenc(abs_path($1)) + '?' + $2
@@ -337,7 +337,7 @@ class HttpClient
 			when /^(\/[^?#]*)/
 				@get_url_allowed << $1
 			when nil
-			when /^(https?|irc):\/\//i, /^mailto:/i, /^javascript/i, /\);?$/
+			when /^(https?|irc):\/\//i, /^(mailto|magnet):/i, /^javascript/i, /\);?$/
 			else
 				if u.length > 0
 					nu = abs_path(u).sub(/[?#].*$/, '')
