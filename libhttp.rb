@@ -449,7 +449,7 @@ EOE
 			@socket.write req
 			s = @socket.gets
 		end
-	rescue Errno::EPIPE, Errno::ECONNRESET
+	rescue Errno::EPIPE, Errno::ECONNRESET, IOError
 		raise if retried > 2
 		retried += 1
 		@socket = nil
