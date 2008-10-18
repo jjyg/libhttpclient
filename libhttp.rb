@@ -41,13 +41,17 @@ end
 
 class HttpResp
 	attr_reader :answer, :headers, :content_raw
-	attr_accessor :parse
 	def initialize
 		@answer = String.new
 		@headers = Hash.new
 		@content_raw = String.new
 		@content = nil
 		@parse = nil
+	end
+
+	attr_writer :parse
+	def parse(type=nil)
+		type ? @parse.find_all { |e| e.type == type } : @parse
 	end
 	
 	def status
@@ -229,7 +233,7 @@ class HttpServer
 	end
 
 	def self.urlenc(s)
-		s.gsub(/([^a-zA-Z0-9_.\/ -]+)/n) do
+		s.to_s.gsub(/([^a-zA-Z0-9_.\/ -]+)/n) do
 			'%' + $1.unpack('H2' * $1.size).join('%').upcase
 		end.tr(' ', '+')
 	end
