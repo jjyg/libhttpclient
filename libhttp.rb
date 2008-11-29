@@ -349,6 +349,7 @@ class HttpServer
 <!ENTITY yacute CDATA "&#253;" -- latin small letter y with acute, U+00FD ISOlat1 -->
 <!ENTITY thorn  CDATA "&#254;" -- latin small letter thorn, U+00FE ISOlat1 -->
 <!ENTITY yuml   CDATA "&#255;" -- latin small letter y with diaeresis, U+00FF ISOlat1 -->
+<!ENTITY hellip CDATA "&#46;" -- ellipse, ..., manually added -->
 EOE
 	def self.htmlentitiesdec(s)
 		s.gsub(/&(\w+);/) { HTMLENTITIES[$1].chr rescue $1 }
