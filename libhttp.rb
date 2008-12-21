@@ -212,9 +212,9 @@ class HttpServer
 		end
 
 		hostre = '[\w.-]+|\[[a-fA-F0-9:]+\]'
-                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:http-proxy://(\w*:\w*@)?(#{hostre})(:\d+)?/)?http(s)?://(\w*:\w*@)?(?:([\w.-]+)(:\d+)?@)?(#{hostre})(:\d+)?/}.match(url)
+                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:(http-proxy|socks)://(\w*:\w*@)?(#{hostre})(:\d+)?/)?http(s)?://(\w*:\w*@)?(?:([\w.-]+)(:\d+)?@)?(#{hostre})(:\d+)?/}.match(url)
 
-                @proxylp, @proxyh, proxyp, @use_ssl, @loginpass, vhost, vport, @host, port = md.captures
+		@proxytype, @proxylp, @proxyh, proxyp, @use_ssl, @loginpass, vhost, vport, @host, port = md.captures
 		@proxyh = @proxyh[1..-2] if @proxyh and @proxyh[0] == ?[
 		@host   = @host[1..-2]   if @host[0] == ?[
 
@@ -418,7 +418,8 @@ EOE
 	end
 
         def connect_socket
-                if @proxyh
+		case @proxytype
+		when 'http-proxy'
                         @socket = TCPSocket.new @proxyh, @proxyp
                         if @use_ssl
 				rq =  "CONNECT #@host:#@port HTTP/1.1\r\n"
@@ -430,9 +431,17 @@ EOE
                                 raise "CONNECT bad response: #{buf.inspect}" if $1.to_i != 200
                                 nil until @socket.gets.chomp.empty?
                         end
-                else
+		when 'socks'
+                        @socket = TCPSocket.new @proxyh, @proxyp
+			# socks_ver 1=connect/2=bind port dest/0.0.0.1=sock4adns creds_strz hostsocks4a_strz
+			buf = [4, 1, @port, 1, '', @host].pack('CCnNa*xa*x')
+			@socket.write buf
+			bufa = @socket.read 8
+			resp = %w[access_granted access_failed failed_noident failed_badindent][bufa[1] - ?Z]
+			raise "socks: #{resp} #{bufa.inspect}" if resp != 'access_granted'
+		else
                         @socket = TCPSocket.new @host, @port
-                end
+		end
                 if @use_ssl
                         @socket = OpenSSL::SSL::SSLSocket.new(@socket, OpenSSL::SSL::SSLContext.new)
                         @socket.sync_close = true

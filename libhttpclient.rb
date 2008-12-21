@@ -4,6 +4,7 @@
 # par Yoann Guillot - 2004
 # fixes by Flyoc (surtout des bug reports en fait !) (merci quand meme.)
 # yay, un patch <area>
+# support proxy socks
 #
 
 require 'libhttp'
@@ -26,6 +27,8 @@ class HttpClient
 		end
 		if ENV['http_proxy'] =~ /^http:\/\/(.*?)\/?$/
 			url = "http-proxy://#$1/#{url}"
+		elsif ENV['http_proxy'] =~ /^socks:\/\/(.*?)\/?$/
+			url = "socks://#$1/#{url}"
 		end
 		@http_s = HttpServer.new(url)
 		@bogus_site = false
