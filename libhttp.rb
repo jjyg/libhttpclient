@@ -352,7 +352,7 @@ class HttpServer
 <!ENTITY hellip CDATA "&#46;" -- ellipse, ..., manually added -->
 EOE
 	def self.htmlentitiesdec(s)
-		s.gsub(/&(\w+);/) { HTMLENTITIES[$1].chr rescue $1 }
+		s.gsub(/&#(\d+);/) { $1.to_i.chr }.gsub(/&(\w+);/) { HTMLENTITIES[$1] ? HTMLENTITIES[$1].chr : "&#$1;" }
 	end
 
 	def self.htmlentitiesenc(s)
