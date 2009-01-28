@@ -265,26 +265,26 @@ class HttpClient
 		page.parse.each { |e|
 			case e.type
 			when 'img', 'Script'
-				to_fetch << e.attr['src']
+				to_fetch << e['src']
 			when 'frame', 'iframe'
-				get_allow << e.attr['src']
+				get_allow << e['src']
 			when 'a', 'area'
-				get_allow << e.attr['href']
+				get_allow << e['href']
 			when 'link'
-				to_fetch << e.attr['href']
+				to_fetch << e['href']
 			when 'form'
 				# default target
 				tg = url.sub(/[?#].*$/, '')
-				if e.attr['action'] and e.attr['action'].length > 0
-					if e.attr['action'][0] == ??
-						tg = tg.sub(/^.*\//, '') + e.attr['action']
+				if e['action'] and e['action'].length > 0
+					if e['action'][0] == ??
+						tg = tg.sub(/^.*\//, '') + e['action']
 					else
-						tg = e.attr['action']
+						tg = e['action']
 					end
 					tg = abs_path(tg) if tg !~ /^https?:\/\// or tg =~ /^http:\/\/#{Regexp.escape @http_s.host}\//
 				end
 				postform = PostForm.new tg unless postform and postform.url == tg
-				if e.attr['method'] and e.attr['method'].downcase == 'post'
+				if e['method'] and e['method'].downcase == 'post'
 					postform.method = 'post'
 				else
 					postform.method = 'get'
@@ -299,7 +299,7 @@ class HttpClient
 			
 			postform.sync_elem(e) if postform
 			
-			to_fetch << e.attr['background'] if e.attr['background']
+			to_fetch << e['background'] if e['background']
 		}
 		@post_allowed << postform if postform
 
@@ -403,22 +403,22 @@ class PostForm
 	def sync_elem(e)
 		case e.type
 		when 'input'
-			e.attr['type'] ||= 'text'
-			if e.attr['name']
-				if e.attr['type'].downcase == 'radio'
-					(@vars[e.attr['name']] ||= []) << e.attr['value']
+			e['type'] ||= 'text'
+			if e['name']
+				if e['type'].downcase == 'radio'
+					(@vars[e['name']] ||= []) << e['value']
 				else
-					(@opt_vars ||= []) << e.attr['name'] if e.attr['type'].downcase == 'checkbox'
-					@vars[e.attr['name']] = e.attr['value'] || ''
-					@mandatory[e.attr['name']] = e.attr['value'] if e.attr['value'] and e.attr['type'] and e.attr['type'].downcase == 'hidden' and e.attr['name'] !~ /\[\]/
+					(@opt_vars ||= []) << e['name'] if e['type'].downcase == 'checkbox'
+					@vars[e['name']] = e['value'] || ''
+					@mandatory[e['name']] = e['value'] if e['value'] and e['type'] and e['type'].downcase == 'hidden' and e['name'] !~ /\[\]/
 				end
-			elsif e.attr['type'].downcase == 'image'
+			elsif e['type'].downcase == 'image'
 				@vars['x'] = rand(15).to_s
 				@vars['y'] = rand(10).to_s
 			end
 		
 		when 'textarea'
-			@textarea_name = e.attr['name']
+			@textarea_name = e['name']
 		when '/textarea'
 			if @textarea_name
 				@vars[@textarea_name] = ''
@@ -426,7 +426,7 @@ class PostForm
 			end
 		
 		when 'select'
-			@select_name = e.attr['name']
+			@select_name = e['name']
 			@vars[@select_name] = [] if @select_name
 		when '/select'
 			if @select_name and @vars[@select_name].empty?
@@ -434,13 +434,13 @@ class PostForm
 			end
 			@select_name = nil	
 		when 'option'
-			if @select_name and e.attr['value']
-				@vars[@select_name] << e.attr['value']
+			if @select_name and e['value']
+				@vars[@select_name] << e['value']
 			end
 		
 		when 'String'
 			if @textarea_name
-				@vars[@textarea_name] = e.attr['content']
+				@vars[@textarea_name] = e['content']
 				@textarea_name = nil
 			end
 		end

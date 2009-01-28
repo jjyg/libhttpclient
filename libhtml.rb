@@ -5,12 +5,19 @@ class HtmlElement
 	attr_accessor :type, :attr, :empty
 	def initialize
 		@type = nil
-		@attr = Hash.new
-		@empty = false
+	end
+
+	def [](attrname)
+	       attr ? @attr[attrname] : nil	
+	end
+
+	def []=(attrname, val)
+		@attr ||= {}
+		@attr[attrname] = val
 	end
 
 	def to_s
-		'<' << type << attr.map{ |k, v| " #{k}=\"#{v}\"" }.join << (@empty ? ' />' : '>')
+		'<' << type << (attr || {}).map{ |k, v| " #{k}=\"#{v}\"" }.join << (empty ? ' />' : '>')
 	end
 end
 
@@ -47,7 +54,7 @@ def parsehtml(page)
 				if curword.length > 0
 					curelem = HtmlElement.new
 					curelem.type = 'String'
-					curelem.attr['content'] = curword.strip
+					curelem['content'] = curword.strip
 					if parse
 						parse << curelem
 					else
@@ -106,7 +113,7 @@ def parsehtml(page)
 		when 2 # tagattrname
 			case c
 			when ?>
-				curelem.attr[curword.downcase] = '' if curword.length > 0
+				curelem[curword.downcase] = '' if curword.length > 0
 				case curelem.type
 				when 'script', 'style'
 					curword = curelem.to_s
@@ -138,7 +145,7 @@ def parsehtml(page)
 		when 3 # aftertagattrname
 			case c
 			when ?>
-				curelem.attr[curattrname] = ''
+				curelem[curattrname] = ''
 				case curelem.type	
 				when 'script', 'style'
 					curword = curelem.to_s
@@ -157,14 +164,14 @@ def parsehtml(page)
 			when ?=
 				state = 4
 			else
-				curelem.attr[curattrname] = ''
+				curelem[curattrname] = ''
 				curword << c
 				state = 2
 			end
 		when 4 # beforetagattrval
 			case c
 			when ?>
-				curelem.attr[curattrname] = ''
+				curelem[curattrname] = ''
 				case curelem.type
 				when 'script', 'style'
 					curword = curelem.to_s
@@ -193,7 +200,7 @@ def parsehtml(page)
 		when 5 # attrval
 			case c
 			when ?>
-				curelem.attr[curattrname] = curword
+				curelem[curattrname] = curword
 				case curelem.type
 				when 'script', 'style'
 					curword = curelem.to_s
@@ -211,7 +218,7 @@ def parsehtml(page)
 				laststate = state
 				state = 9
 			when ?\ 
-				curelem.attr[curattrname] = curword
+				curelem[curattrname] = curword
 				curword = ''
 				state = 2
 			else
@@ -236,7 +243,7 @@ def parsehtml(page)
 			when ?>
 				if (curword[-1] == ?- and curword[-2] == ?-)
 					curelem.type = 'Comment'
-					curelem.attr['content'] = '<!--'+curword+'>'
+					curelem['content'] = '<!--'+curword+'>'
 					if parse
 						parse << curelem
 					else
@@ -261,7 +268,7 @@ def parsehtml(page)
 		when 10 # <script
 			if (c == ?> and curword =~ /<\s*\/\s*#{curelem.type}\s*$/i)
 				curelem.type.capitalize!
-				curelem.attr['content'] = curword << c
+				curelem['content'] = curword << c
 				if parse
 					parse << curelem
 				else
@@ -277,7 +284,7 @@ def parsehtml(page)
 	if state == 0 and curword.length > 0
 		curelem = HtmlElement.new
 		curelem.type = 'String'
-		curelem.attr['content'] = curword.strip
+		curelem['content'] = curword.strip
 		if parse
 			parse << curelem
 		else

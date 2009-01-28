@@ -66,13 +66,16 @@ class HttpResp
 				while (File.exist?(tmpname+ext.to_s))
 					ext = rand(10000)
 				end
-				file = File.new(tmpname+ext.to_s, 'wb+')
-				file.write(@content_raw)
-				file.rewind
-				zfile = Zlib::GzipReader.new(file)
-				@content = zfile.read
-				zfile.close
-				File.unlink(tmpname+ext.to_s)
+				begin
+					file = File.new(tmpname+ext.to_s, 'wb+')
+					file.write(@content_raw)
+					file.rewind
+					zfile = Zlib::GzipReader.new(file)
+					@content = zfile.read
+					zfile.close
+				ensure
+					File.unlink(tmpname+ext.to_s)
+				end
 			elsif @headers['content-encoding'] == 'deflate'
 				puts "Content-encoding deflate !!!"
 				@content = Zlib::Inflate.inflate(@content_raw)
@@ -176,11 +179,11 @@ class HttpResp
 			case e.type
 			when 'String'
 				txt << ' ' if maynl
-				txt << HttpServer.htmlentitiesdec(e.attr['content'].gsub(/(?:&nbsp;|\s)+/, ' ').strip)
+				txt << HttpServer.htmlentitiesdec(e['content'].gsub(/(?:&nbsp;|\s)+/, ' ').strip)
 				maynl = true
 			when 'optgroup'
 				txt << nl if maynl
-				txt << HttpServer.htmlentitiesdec(e.attr['label'])
+				txt << HttpServer.htmlentitiesdec(e['label'])
 				txt << nl
 				maynl = false
 				
