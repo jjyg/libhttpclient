@@ -382,6 +382,7 @@ class PostForm
 		@vars = Hash.new
 		@mandatory = Hash.new
 		@textarea_name = nil
+		@opt_vars = nil
 	end
 
 	def eql?(other)
