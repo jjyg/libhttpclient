@@ -165,11 +165,11 @@ class HttpResp
 		@parse ||= parsehtml content
 		@parse.each { |e|
 			case e.type
-			when 'body':  inbody = true ; next
-			when '/body': inbody = false
-			when 'noframes':  innoframes = true
-			when '/noframes': innoframes = false ; next
-			when 'form':  inform = true
+			when 'body';  inbody = true ; next
+			when '/body'; inbody = false
+			when 'noframes';  innoframes = true
+			when '/noframes'; innoframes = false ; next
+			when 'form';  inform = true
 			when '/form'
 				txt << e << nl unless onlystr
 				inform = false
@@ -361,6 +361,7 @@ EOE
 	def self.htmlentitiesenc(s)
 		s.gsub(/(.)/) {
 			e = HTMLENTITIES.index $1[0]
+			e = nil if e == 'hellip'
 			e ? "&#{e};" : $1
 		}
 	end
@@ -457,7 +458,7 @@ EOE
 		retried = 0
 		puts 'send_req:', req if $DEBUG
 	begin
-		if not @socket or not ( @socket.write req ; s = @socket.gets )
+		if not @socket or !( @socket.write req ; s = @socket.gets )
 			@socket.shutdown if @socket rescue nil
 			@socket.close if @socket rescue nil
 
