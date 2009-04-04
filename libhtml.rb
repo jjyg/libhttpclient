@@ -26,29 +26,32 @@ def parsehtml(page)
 	curelem = nil
 	curword = ''
 	curattrname = nil
-	state = 0
-	laststate = 0
+	state = :waitopen
+	laststate = state
 	
-	# 0: before tag/in string	''
-	# 1: in tag type		'<'
-	# 2: in tag attrname		'<kikoo '
-	# 3: before tag =		'<kikoo lol'
-	# 4: before tag attrval		'<kikoo lol='
-	# 5: in tag attrval		'<kikoo lol=huu'
-	# 6: in tag with "		'<kikoo lol="hoho'
-	# 7: in tag with '		'<kikoo lol=\'haha'
-	# 8: in comment
-	# 9: wait for end of tag	'<kikoo /'
-	# 10: in script tag
+	# 0: waitopen		before tag/in string	''
+	# 1: tagtype		in tag type		'<'
+	# 2: tagattrname	in tag attrname		'<kikoo '
+	# 3: tagattreql		before tag =		'<kikoo lol'
+	# 4: tagattval		before tag attrval	'<kikoo lol='
+	# 5: tagattrvalraw	in tag attrval		'<kikoo lol=huu'
+	# 6: tagattrvaldquot	in tag with "		'<kikoo lol="hoho'
+	# 7: tagattrvalsquot	in tag with '		'<kikoo lol=\'haha'
+	# 8: comment		in comment		'<!-- '
+	# 9: tagend		wait for end of tag	'<kikoo /'
+	# 10: script		in script/style tag	'<script '
 	
-	# stream:  blabla<tag t=tv tg = "tav" tag='t'><kikoo>
-	# state:  0000000111122455222344666652222477501111110
+	# stream:  blabla<tag t=tv tg = "tav" tag='t'><kikoo/>
+	# state:  00000001111224552223446666522224775011111190
 	
-	# tags take downcase on type and attrname
+	# tags type and attrname downcased
 	
-	page.gsub(/\s+/, ' ').gsub(/< /, '<').each_byte { |c|
+	pg = page.gsub(/\s+/, ' ')	# incl. newlines
+	pg.length.times { |pos|
+		c = pg[pos] # any other way to enumerate characters of the string portably (ruby 1.8 & 1.9) ?
+
 		case state
-		when 0 # string
+		when :waitopen # string
 			case c
 			when ?<
 				if curword.length > 0
@@ -63,16 +66,23 @@ def parsehtml(page)
 				end
 				curword = ''
 				curelem = HtmlElement.new
-				state = 1
-			when ?\ 
+				state = :waittagtype
+			when ?\ 	# space
 				curword << c if curword.length > 0
 			else
 				curword << c
 			end
-		when 1 # after tag start
+		when :waittagtype
+			case c
+			when ?\ 	# space
+				next
+			end
+			state = :tagtype
+			redo
+		when :tagtype # after tag start
 			if curword == '!--' # html comment
 				curword = c.chr
-				state = 8
+				state = :comment
 				next
 			end
 			
@@ -82,7 +92,7 @@ def parsehtml(page)
 				case curelem.type
 				when 'script', 'style'
 					curword = curelem.to_s
-					state = 10
+					state = :script
 					next
 				end
 				if parse
@@ -91,33 +101,33 @@ def parsehtml(page)
 					yield curelem
 				end
 				curword = ''
-				state = 0
+				state = :waitopen
 			when ?/
 				if curword.length == 0
 					# / at the beginning of a tag
 					curword = c.chr
 				else
 					laststate = state
-					state = 9
+					state = :tagend
 				end
-			when ?\ 
+			when ?\ 	# space
 				if curword.length > 0
 					# <    kikoospaces lol="mdr">
 					curelem.type = curword.downcase
 					curword = ''
-					state = 2
+					state = :tagattrname
 				end
 			else
 				curword << c
 			end
-		when 2 # tagattrname
+		when :tagattrname # tagattrname
 			case c
 			when ?>
 				curelem[curword.downcase] = '' if curword.length > 0
 				case curelem.type
 				when 'script', 'style'
 					curword = curelem.to_s
-					state = 10
+					state = :script
 					next
 				end
 			
@@ -127,29 +137,29 @@ def parsehtml(page)
 					yield curelem
 				end
 				curword = ''
-				state = 0
+				state = :waitopen
 			when ?/
 				laststate = state
-				state = 9
-			when ?\ 
+				state = :tagend
+			when ?\ 	# space
 				curattrname = curword.downcase
 				curword = ''
-				state = 3
+				state = :tagattreql
 			when ?=
 				curattrname = curword.downcase
 				curword = ''
-				state = 4
+				state = :tagattrval
 			else
 				curword << c
 			end
-		when 3 # aftertagattrname
+		when :tagattreql # aftertagattrname
 			case c
 			when ?>
 				curelem[curattrname] = ''
 				case curelem.type	
 				when 'script', 'style'
 					curword = curelem.to_s
-					state = 10
+					state = :script
 					next
 				end
 				if parse
@@ -157,25 +167,25 @@ def parsehtml(page)
 				else
 					yield curelem
 				end
-				state = 0
+				state = :waitopen
 			when ?/
 				laststate = state
-				state = 9
+				state = :tagend
 			when ?=
-				state = 4
+				state = :tagattrval
 			else
 				curelem[curattrname] = ''
 				curword << c
-				state = 2
+				state = :tagattrname
 			end
-		when 4 # beforetagattrval
+		when :tagattrval # beforetagattrval
 			case c
 			when ?>
 				curelem[curattrname] = ''
 				case curelem.type
 				when 'script', 'style'
 					curword = curelem.to_s
-					state = 10
+					state = :script
 					next
 				end
 				if parse
@@ -183,28 +193,28 @@ def parsehtml(page)
 				else
 					yield curelem
 				end
-				state = 0
+				state = :waitopen
 			when ?/
 				laststate = state
-				state = 9
+				state = :tagend
 			when ?"
-				state = 6
+				state = :tagattrvaldquot
 			when ?'
-				state = 7
-			when ?\ 
+				state = :tagattrvalsquot
+			when ?\ 	# space
 				# nop
 			else
 				curword << c
-				state = 5
+				state = :tagattrvalraw
 			end
-		when 5 # attrval
+		when :tagattrvalraw # attrval
 			case c
 			when ?>
 				curelem[curattrname] = curword
 				case curelem.type
 				when 'script', 'style'
 					curword = curelem.to_s
-					state = 10
+					state = :script
 					next
 				end
 				if parse
@@ -213,32 +223,32 @@ def parsehtml(page)
 					yield curelem
 				end
 				curword = ''
-				state = 0
+				state = :waitopen
 			when ?/
 				laststate = state
-				state = 9
-			when ?\ 
+				state = :tagend
+			when ?\ 	# space
 				curelem[curattrname] = curword
 				curword = ''
-				state = 2
+				state = :tagattrname
 			else
 				curword << c
 			end
-		when 6 # attrval, doublequote
+		when :tagattrvaldquot # attrval, doublequote
 			case c
 			when ?"
-				state = 5
+				state = :tagattrvalraw
 			else
 				curword << c
 			end
-		when 7 # attrval, singlequote
+		when :tagattrvalsquot # attrval, singlequote
 			case c
 			when ?'
-				state = 5
+				state = :tagattrvalraw
 			else
 				curword << c
 			end
-		when 8 # comment
+		when :comment # comment
 			case c
 			when ?>
 				if (curword[-1] == ?- and curword[-2] == ?-)
@@ -250,14 +260,14 @@ def parsehtml(page)
 						yield curelem
 					end
 					curword = ''
-					state = 0
+					state = :waitopen
 				else
 					curword << c
 				end
 			else
 				curword << c
 			end
-		when 9 # wait for end of tag
+		when :tagend # wait for end of tag
 			if (c != ?>)
 				curword << ?/
 			else
@@ -265,7 +275,7 @@ def parsehtml(page)
 			end
 			state = laststate
 			redo
-		when 10 # <script
+		when :script # <script
 			if (c == ?> and curword =~ /<\s*\/\s*#{curelem.type}\s*$/i)
 				curelem.type.capitalize!
 				curelem['content'] = curword << c
@@ -275,13 +285,13 @@ def parsehtml(page)
 					yield curelem
 				end
 				curword = ''
-				state = 0
+				state = :waitopen
 			else
 				curword << c
 			end
 		end
 	}
-	if state == 0 and curword.length > 0
+	if state == :waitopen and curword.length > 0
 		curelem = HtmlElement.new
 		curelem.type = 'String'
 		curelem['content'] = curword.strip
