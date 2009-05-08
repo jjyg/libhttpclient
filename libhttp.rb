@@ -209,6 +209,10 @@ end
 class HttpServer
 	attr_accessor :host, :port, :vhost, :vport, :loginpass, :proxyh, :proxyp, :proxylp, :use_ssl, :socket, :timeout
 
+	@@timeout = 120
+	def self.timeout ; @@timeout ; end
+	def self.timeout=(n) ; @@timeout=n ; end
+
         def initialize(url)
 		if not url.include? '://'
 			url = "http://#{url}/"
@@ -232,7 +236,7 @@ class HttpServer
 
                 @socket = nil
 
-		@timeout = 120
+		@timeout = @@timeout
 	end
 
 	def self.urlenc(s)
