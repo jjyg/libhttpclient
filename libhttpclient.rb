@@ -19,7 +19,7 @@ end
 
 class HttpClient
 	attr_accessor :path, :cookie, :get_url_allowed, :post_allowed, :cache, :cur_url, :curpage, :history, :links, :http_s
-	attr_accessor :bogus_site, :referer, :allowbadget
+	attr_accessor :bogus_site, :referer, :allowbadget, :do_cache
 
 	def initialize(url)
 		if not url.include? '://'
@@ -34,6 +34,7 @@ class HttpClient
 		@bogus_site = false
 		@allowbadget = false
 		@next_fetch = Time.now
+		@do_cache = true
 		clear
 	end
 
@@ -238,7 +239,7 @@ class HttpClient
 			end
 		when 401, 403, 404
 			puts "Error #{page.status} with url #{url} from #{@referer}" if not @bogus_site rescue nil
-			@cache[url] = page
+			@cache[url] = (@do_cache ? page : '')
 			return page
 		when 200
 			# noreturn
@@ -247,7 +248,7 @@ class HttpClient
 			return page
 		end
 			
-		@cache[url] = page
+		@cache[url] = (@do_cache ? page : '')
 		
 		return page if recursive or (page.headers['content-type'] and page.headers['content-type'] !~ /text\/(ht|x)ml/)
 		
