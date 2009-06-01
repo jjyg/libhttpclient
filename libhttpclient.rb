@@ -239,7 +239,7 @@ class HttpClient
 			end
 		when 401, 403, 404
 			puts "Error #{page.status} with url #{url} from #{@referer}" if not @bogus_site rescue nil
-			@cache[url] = (@do_cache ? page : '')
+			@cache[url] = page
 			return page
 		when 200
 			# noreturn
@@ -248,7 +248,7 @@ class HttpClient
 			return page
 		end
 			
-		@cache[url] = (@do_cache ? page : '')
+		@cache[url] = (@do_cache ? page : ((@cache[url] and @cache[url] != '') ? page : ''))
 		
 		return page if recursive or (page.headers['content-type'] and page.headers['content-type'] !~ /text\/(ht|x)ml/)
 		
