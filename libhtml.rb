@@ -2,6 +2,14 @@
 # par Yoann Guillot - 2004
 
 class HtmlElement
+	String = 'String'.freeze
+	def self.new_string(s)
+		n = new
+		n.type = String
+		n['content'] = s
+		n
+	end
+
 	attr_accessor :type, :attr, :empty
 	def initialize
 		@type = nil
@@ -19,15 +27,35 @@ class HtmlElement
 	def to_s
 		'<' << type << (attr || {}).map{ |k, v| " #{k}=\"#{v}\"" }.join << (empty ? ' />' : '>')
 	end
+
+	def ==(o)
+		self.class == o.class and type == o.type and attr == o.attr and empty == o.empty
+	end
+	def hash
+		type.hash ^ attr.hash
+	end
+	alias eql? ==
 end
 
-def parsehtml(page)
+def parsehtml(page, nocache=false)
 	parse = Array.new unless block_given?
 	curelem = nil
 	curword = ''
 	curattrname = nil
 	state = :waitopen
 	laststate = state
+
+	# use nocache=true to avoid this if you intend to change some of the tags
+	class << parse
+		def <<(e)
+			# list of tags created, avoid duplicate objects (saves mem)
+			@cache ||= {}
+			super(@cache[e] ||= e)
+		end
+		# free mem used by the cache
+		def done; @cache = nil end
+	end if parse and not nocache
+
 	
 	# 0: waitopen		before tag/in string	''
 	# 1: tagtype		in tag type		'<'
@@ -55,9 +83,7 @@ def parsehtml(page)
 			case c
 			when ?<
 				if curword.length > 0
-					curelem = HtmlElement.new
-					curelem.type = 'String'
-					curelem['content'] = curword.strip
+					curelem = HtmlElement.new_string(curword.strip)
 					if parse
 						parse << curelem
 					else
@@ -292,14 +318,14 @@ def parsehtml(page)
 		end
 	}
 	if state == :waitopen and curword.length > 0
-		curelem = HtmlElement.new
-		curelem.type = 'String'
-		curelem['content'] = curword.strip
+		curelem = HtmlElement.new_string(curword.strip)
 		if parse
 			parse << curelem
 		else
 			yield curelem
 		end
 	end
+
+	parse.done if parse.respond_to? :done
 	return parse
 end
