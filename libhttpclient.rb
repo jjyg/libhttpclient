@@ -118,6 +118,8 @@ class HttpClient
 	end
 	
 	def get(url, timeout=nil, headers={}, recursive=false)
+		url = url.sub(/^https?:\/\/[^\/]*/, '')
+
 		url.gsub!(' ', '%20')
 
 		url = abs_path(url, (not recursive))
@@ -148,6 +150,8 @@ class HttpClient
 	end
 
 	def post_raw(url, postdata, headers={}, timeout=nil)
+		url = url.sub(/^https?:\/\/[^\/]*/, '')
+
 		url = abs_path(url, true)
 		
 		diff = @next_fetch.to_i - Time.now.to_i
@@ -165,6 +169,8 @@ class HttpClient
 	end
 
 	def post(url, postdata, timeout=nil, pretimeout=nil)
+		url = url.sub(/^https?:\/\/[^\/]*/, '')
+
 		url = abs_path(url, true)
 		
 		allow = @cur_url ? false : true
