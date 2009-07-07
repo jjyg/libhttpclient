@@ -74,6 +74,12 @@ class HttpClient
 		h
 	end
 
+	def abs_url(url)
+		return url if url.include? '://'
+		url = abs_path(url)
+		"http#{'s' if @http_s.use_ssl}://#{@http_s.host}#{":#{@http_s.port}" if @http_s.port != 80}#{url}"
+	end
+
 	def abs_path(url, update_class = false)
 		path = @path.clone
 		url = $1 if url =~ /^http:\/\/#{Regexp.escape @http_s.host}(\/.*)/
