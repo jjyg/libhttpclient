@@ -198,6 +198,10 @@ class HttpClient
 		timeout ||= 1
 		@next_fetch = Time.now + timeout
 
+		do_post(url, postdata)
+	end
+
+	def do_post(url, postdata)
 		@cur_url = url
 		@history << 'post:'+url
 		page = @http_s.post(url, postdata, sess_headers)
