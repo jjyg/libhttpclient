@@ -106,9 +106,14 @@ def parsehtml(page, nocache=false)
 			state = :tagtype
 			redo
 		when :tagtype # after tag start
-			if curword == '!--' # html comment
+			case curword.downcase
+			when '!--' # html comment
 				curword = c.chr
 				state = :comment
+				next
+			when '![cdata[' # xml cdata
+				curword = c.chr
+				state = :cdata
 				next
 			end
 			
@@ -274,12 +279,12 @@ def parsehtml(page, nocache=false)
 			else
 				curword << c
 			end
-		when :comment # comment
+		when :comment, :cdata # comment
 			case c
 			when ?>
-				if (curword[-1] == ?- and curword[-2] == ?-)
-					curelem.type = 'Comment'
-					curelem['content'] = '<!--'+curword+'>'
+				if (state == :comment and curword[-1] == ?- and curword[-2] == ?-) or (state == :cdata and curword[-1] == ?] and curword[-2] == ?])
+					curelem.type = state.to_s.capitalize
+					curelem['content'] = curword[0...-2]
 					if parse
 						parse << curelem
 					else
