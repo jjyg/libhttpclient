@@ -207,11 +207,21 @@ class HttpResp
 end
 
 class HttpServer
-	attr_accessor :host, :port, :vhost, :vport, :loginpass, :proxyh, :proxyp, :proxylp, :use_ssl, :socket, :timeout
+	attr_accessor :host, :port, :vhost, :vport, :loginpass, :proxyh, :proxyp, :proxylp, :use_ssl, :socket
 
+	# global defaults
 	@@timeout = 120
-	def self.timeout ; @@timeout ; end
-	def self.timeout=(n) ; @@timeout=n ; end
+	@@hdr_useragent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0'
+	@@hdr_accept = 'text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5'
+	@@hdr_encoding = 'gzip,deflate'
+	@@hdr_language = 'en'
+	class << self
+		%w[timeout hdr_useragent hdr_accept hdr_encoding hdr_language].each { |a|
+			define_method(a) { class_variable_get "@@#{a}" }
+			define_method(a+'=') { |v| class_variable_set "@@#{a}", v }
+		}
+	end
+	attr_accessor :timeout, :hdr_useragent, :hdr_accept, :hdr_encoding, :hdr_language
 
         def initialize(url)
 		if not url.include? '://'
@@ -237,6 +247,11 @@ class HttpServer
                 @socket = nil
 
 		@timeout = @@timeout
+
+		@hdr_useragent = @@hdr_useragent
+		@hdr_accept    = @@hdr_accept
+		@hdr_encoding  = @@hdr_encoding
+		@hdr_language  = @@hdr_language
 	end
 
 	def self.urlenc(s)
@@ -374,13 +389,13 @@ EOE
 	def setup_request_headers(headers)
 		headers['Host'] = @vhost
 		headers['Host'] += ":#@vport" if @vport != 80
-		headers['User-Agent'] = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1) Gecko/20061010 Firefox/2.0'
-		headers['Accept'] = 'text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5'
-		headers['Connection'] = 'keep-alive' if not headers['Connection']
-		headers['Accept-Encoding'] = 'gzip,deflate'
-		headers['Accept-Language'] = 'en'
-		headers['Authorization'] = @loginpass if @loginpass
-		headers['Proxy-Authorization'] = @proxylp if @proxylp and not @use_ssl
+		headers['User-Agent'] ||= @hdr_useragent
+		headers['Accept'] ||= @hdr_accept
+		headers['Connection'] ||= 'keep-alive'
+		headers['Accept-Encoding'] ||= @hdr_encoding
+		headers['Accept-Language'] ||= @hdr_language
+		headers['Authorization'] ||= @loginpass if @loginpass
+		headers['Proxy-Authorization'] ||= @proxylp if @proxylp and not @use_ssl
 	end
 
 	def get(page, headers = Hash.new)
