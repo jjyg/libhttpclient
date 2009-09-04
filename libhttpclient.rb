@@ -19,7 +19,7 @@ end
 
 class HttpClient
 	attr_accessor :path, :cookie, :get_url_allowed, :post_allowed, :cache, :cur_url, :curpage, :history, :links, :http_s
-	attr_accessor :bogus_site, :referer, :allowbadget, :do_cache
+	attr_accessor :bogus_site, :referer, :allowbadget, :do_cache, :othersite_redirect
 
 	def initialize(url)
 		if not url.include? '://'
@@ -35,6 +35,7 @@ class HttpClient
 		@allowbadget = false
 		@next_fetch = Time.now
 		@do_cache = true
+		@othersite_redirect = lambda { |url| puts "Will no go to another site ! (#{url})" rescue nil }
 		clear
 	end
 
@@ -66,7 +67,7 @@ class HttpClient
 	def sess_headers
 		h = Hash.new
 		if not @cookie.empty?
-			h['Cookie'] = @cookie.map { |k, v| "#{k}=#{v}" }.join('; ')
+			h['Cookie'] = @cookie.map { |k, v| "#{k}=#{v}" if not ['path', 'domain', 'expires'].include?(k.downcase) }.compact.join('; ')
 		end
 		if @referer
 			h['Referer'] = @referer
@@ -218,12 +219,10 @@ class HttpClient
 			page.headers['set-cookie'].split(/\s*;\s*/).each { |c|
 				if c =~ /^([^=]*)=(.*)$/
 					name, val = $1, $2
-					if not ['path', 'domain', 'expires'].include?(name)
-						if (val == 'deleted')
-							@cookie.delete(name)
-						else
-							@cookie[name] = val
-						end
+					if (val == 'deleted')
+						@cookie.delete(name)
+					else
+						@cookie[name] = val
 					end
 				end
 			}
@@ -232,8 +231,7 @@ class HttpClient
 		case page.status
 		when 301, 302
 			newurl = page.headers['location'].sub(/#[^?]*/, '')
-#			puts "#{url} => 302 to #{newurl}" if newurl !~ /^[0-9a-zA-Z.:\/-]*$/ and page.status == 302 rescue nil
-			puts "#{url} => 301 to #{newurl}" if page.status == 301 rescue nil
+			puts "#{page.status} to #{newurl}" if $DEBUG and not recursive
 			case newurl
 			when /^http#{'s' if @http_s.use_ssl}:\/\/#{@http_s.vhost}(?::#{@http_s.vport or @http_s.use_ssl ? 443 : 80})?(.*)$/, /^(\/.*)$/
 				newurl = $1
@@ -245,7 +243,8 @@ class HttpClient
 				@get_url_allowed << newurl.sub(/[?#].*$/, '') if not recursive
 				return get(newurl, 0, {}, recursive)
 			when /^https?:\/\//
-				puts "Will no go to another site ! (#{url} is a 302 to #{newurl})" rescue nil
+				#@referer = 'http://' + @http_s.vhost + url	# XXX curpage url or original referer ?
+				@othersite_redirect[newurl]
 				return page
 			else
 				raise RuntimeError.new("No location for 302 at #{url}!!!") if not newurl
@@ -498,5 +497,60 @@ class PostForm
 	
 	def to_s
 		"PostForm: url #{@url} ; vars: #{@vars.inspect} (mandatory: #{@mandatory.keys.inspect})"
+	end
+end
+
+# sync multiple httpclient for multiple (v)hosts
+# they share cookies
+class HttpClientMulti
+	attr_accessor :http_list, :current, :domain
+	def initialize(domain='.foo.com')
+		@domain = domain
+		@http_list = {}
+	end
+
+	def url_get_host(url)
+		# http://foo != https://foo
+		$1 if url =~ /^(https?:\/\/[^\/:]+)/i
+	end
+
+	def new_http(host, url)
+		h = HttpClient.new(url)
+		h.othersite_redirect = lambda { |u|
+			newhost = url_get_host(u)
+			if newhost[-@domain.length, @domain.length] == @domain
+				get(u)
+			else
+				puts "redirect out of domain: #{u}"
+			end
+		}
+		ref = @http_list.values.first
+		h.cookie = ref.cookie if ref
+		# proxy, l/p ?
+		@http_list[host] = h
+	end
+
+	def set_http(url)
+		if host = url_get_host(url)
+			r = @current.referer if current
+			@current = @http_list[host] || new_http(host, url)
+			@current.referer = r if r
+		end
+	end
+
+	def get(url, *a)
+		set_http(url)
+		@current.get(url, *a)
+		@current.curpage
+	end
+
+	def post(url, *a)
+		set_http(url)
+		@current.post(url, *a)
+		@current.curpage
+	end
+
+	def method_missing(*a)
+		@current.send(*a)
 	end
 end
