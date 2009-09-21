@@ -392,6 +392,8 @@ EOE
 		headers['User-Agent'] ||= @hdr_useragent
 		headers['Accept'] ||= @hdr_accept
 		headers['Connection'] ||= 'keep-alive'
+		headers['Keep-Alive'] ||= 300
+		headers['Accept-Charset'] ||= 'ISO-8859-1,utf-8;q=0.7,*;q=0.7'
 		headers['Accept-Encoding'] ||= @hdr_encoding
 		headers['Accept-Language'] ||= @hdr_language
 		headers['Authorization'] ||= @loginpass if @loginpass
@@ -401,7 +403,11 @@ EOE
 	def get(page, headers = Hash.new)
 		setup_request_headers(headers)
 		
-		req = ["GET #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
+		# sort headers (TODO better)
+		h = headers.dup
+		h = ["Host: #{h.delete 'Host'}"] +
+			h.map { |k, v| "#{k}: #{v}" }
+		req = ["GET #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + h
 		req = req.join("\r\n") + "\r\n\r\n"
 		begin
 			s = send_req req

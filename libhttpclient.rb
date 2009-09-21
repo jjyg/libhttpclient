@@ -251,7 +251,7 @@ class HttpClient
 				if newurl =~ /^(.*?)\?(.*)$/
 					newurl, gdata = $1, $2
 					newurl += '?' +
-					gdata.split('&').map{ |e| e.split('=', 2).map{ |k| HttpServer.urlenc(k) }.join('=') }.join('&')
+					gdata #.split('&').map{ |e| e.split('=', 2).map{ |k| HttpServer.urlenc(k) }.join('=') }.join('&')
 				end
 				@get_url_allowed << newurl.sub(/[?#].*$/, '') if not recursive
 				return get(newurl, 0, {}, recursive)
