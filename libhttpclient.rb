@@ -47,6 +47,19 @@ class HttpClient
 		 @path, @get_url_allowed, @post_allowed, @referer, @curpage, @cur_url = *(s.map { |o| o.dup rescue o })
 	end
 	
+	def loadcookies(f)
+		File.readlines(f).each { |l|
+			c = l.chomp.split(/\s*=\s*/, 2)
+			@cookie[c[0]] = c[1]
+		}
+	end
+
+	def savecookies(f)
+		File.open(f, 'w') { |fd|
+			@cookie.each { |k, v| fd.puts "#{k} = #{v}" }
+		}
+	end
+
 	def clear
 		@post_allowed = Array.new
 		@get_url_allowed = Array.new
