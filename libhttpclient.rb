@@ -35,7 +35,7 @@ class HttpClient
 		@allowbadget = false
 		@next_fetch = Time.now
 		@do_cache = true
-		@othersite_redirect = lambda { |url| puts "Will no go to another site ! (#{url})" rescue nil }
+		@othersite_redirect = lambda { |url| puts "Will no go to another site ! (#{url})" if $VERBOSE rescue nil }
 		clear
 	end
 
@@ -66,7 +66,7 @@ class HttpClient
 		@history = Array.new
 		@cache = Hash.new
 		@cookie = Hash.new
-		@referer = nil
+		@referer = ''
 		@path = '/'
 		@cur_url = nil
 		@curpage = nil
@@ -82,21 +82,32 @@ class HttpClient
 		if not @cookie.empty?
 			h['Cookie'] = @cookie.map { |k, v| "#{k}=#{v}" if not ['path', 'domain', 'expires'].include?(k.downcase) }.compact.join('; ')
 		end
-		if @referer
+		if @referer and not @referer.empty?
 			h['Referer'] = @referer
 		end
 		h
 	end
 
+	def cururlprefix
+		"http#{'s' if @http_s.use_ssl}://#{@http_s.vhost}#{":#{@http_s.vport}" if @http_s.vport != (@http_s.use_ssl ? 443 : 80)}"
+	end
+
+	def cururlprefix_re
+		re = Regexp.escape(cururlprefix)
+		if @http_s.vport == (@http_s.use_ssl ? 443 : 80)
+			re << "(?::#{@http_s.vport})?"
+		end
+		re
+	end
+
 	def abs_url(url)
 		return url if url.include? '://'
-		url = abs_path(url)
-		"http#{'s' if @http_s.use_ssl}://#{@http_s.host}#{":#{@http_s.port}" if @http_s.port != 80}#{url}"
+		cururlprefix + abs_path(url)
 	end
 
 	def abs_path(url, update_class = false)
 		path = @path.clone
-		url = $1 if url =~ /^http:\/\/#{Regexp.escape @http_s.host}(\/.*)/
+		url = $1 if url =~ /^#{cururlprefix_re}(\/.*)/
 		if (url =~ /^(\/(?:[^?]+\/)?)(.*?)$/)
 			# /, /url, /url/url, /url/url?url/url
 			path = $1
@@ -138,9 +149,11 @@ class HttpClient
 	end
 	
 	def get(url, timeout=nil, headers={}, recursive=false)
-		url = url.sub(/^https?:\/\/[^\/]*/, '')
+		url = url.sub(/^#{cururlprefix_re}\//, '/')
+		return @othersite_redirect[url] if url =~ /^https?:\/\//
 
 		url.gsub!(' ', '%20')
+		return if recursive and @cache[url]
 
 		url = abs_path(url, (not recursive))
 
@@ -280,7 +293,8 @@ class HttpClient
 		
 		return page if recursive or (page.headers['content-type'] and page.headers['content-type'] !~ /text\/(ht|x)ml/)
 		
-		@referer = 'http://' + @http_s.vhost + url
+		@referer ||= ''
+		@referer.replace 'http://' + @http_s.vhost + url
 		
 		@get_url_allowed.clear
 		@get_url_allowed << url.sub(/[#?].*$/, '')
@@ -303,21 +317,21 @@ class HttpClient
 				to_fetch << e['href']
 			when 'form'
 				# default target
-				tg = url.sub(/[?#].*$/, '')
+				tg = cururlprefix + url.sub(/[?#].*$/, '')
 				if e['action'] and e['action'].length > 0
 					if e['action'][0] == ??
 						tg = tg.sub(/^.*\//, '') + e['action']
 					else
 						tg = e['action']
 					end
-					tg = abs_path(tg) if tg !~ /^https?:\/\// or tg =~ /^http:\/\/#{Regexp.escape @http_s.host}\//
+					tg = cururlprefix + abs_path(tg) if tg !~ /^https?:\/\// #or tg =~ /^#{cururlprefix_re}\//
 				end
 				postform = PostForm.new tg unless postform and postform.url == tg
 				if e['method'] and e['method'].downcase == 'post'
 					postform.method = 'post'
 				else
 					postform.method = 'get'
-					get_allow << tg
+					get_allow << tg.sub(/^#{cururlprefix_re}/, '')
 				end
 			when '/form'
 				if postform
@@ -338,13 +352,13 @@ class HttpClient
 		to_fetch.each { |u|
 			case u
 			when '', nil
-			when /^(?:http:\/\/#{@http_s.host})?(\/[^?]*)(?:\?(.*))?/i
-				if $2
-					to_fetch_temp << (HttpServer.urlenc($1) + '?' + $2)
+			when /^(https?:\/\/[^\/]*)?(\/[^?]*)(?:\?(.*))?/i
+				if $3
+					to_fetch_temp << ($1.to_s + HttpServer.urlenc($2) + '?' + $3)
 				else
-					to_fetch_temp << HttpServer.urlenc($1)
+					to_fetch_temp << ($1.to_s + HttpServer.urlenc($2))
 				end
-			when /^(https?|irc):\/\//i, /^(mailto|magnet):/i, /^javascript/i, /\);?$/
+			when /^(mailto|magnet):/i, /^javascript/i, /\);?$/
 			else
 				if u =~ /([^?]*)\?(.*)/
 					u = HttpServer.urlenc(abs_path($1)) + '?' + $2
@@ -356,7 +370,7 @@ class HttpClient
 			end
 		}
 		
-		to_fetch = to_fetch_temp.uniq - @cache.keys
+		to_fetch = to_fetch_temp.uniq
 #puts "for #{url}: recursing to #{to_fetch.sort.inspect}"
 		to_fetch.each { |u|
 			get(u, 0, {}, true)
@@ -364,7 +378,7 @@ class HttpClient
 		
 		get_allow.each { |u|
 			case u
-			when /^http:\/\/#{@http_s.host}(\/[^?#]*)/i
+			when /^#{cururlprefix_re}(\/[^?#]*)/i
 				@get_url_allowed << $1
 			when /^(\/[^?#]*)/
 				@get_url_allowed << $1
@@ -386,7 +400,7 @@ class HttpClient
 	end
 	
 	def to_s
-		"Http Client for #{@http_s.host}: current url #{@cur_url}\n"+
+		"Http Client for #{cururlprefix}: current url #{@cur_url}\n"+
 		"Cookies: #{@cookie.inspect}\n"+
 		"Cache: #{@cache.keys.sort.join(', ')}\n"+
 		"Get allowed: #{@get_url_allowed.sort.join(', ')}\n"+
@@ -546,21 +560,25 @@ class HttpClientMulti
 	def set_http(url)
 		if host = url_get_host(url)
 			r = @current.referer if current
-			@current = @http_list[host] || new_http(host, url)
-			@current.referer = r if r
+			srv = @http_list[host] || new_http(host, url)
+			srv.referer = r if r
+			srv
+		else
+			@current	# relative url
 		end
 	end
 
 	def get(url, *a)
-		set_http(url)
-		@current.get(url, *a)
-		@current.curpage
+		srv = set_http(url)
+		@current = srv if not a.last == true	# recursive
+		srv.get(url, *a)
+		#@current.curpage
 	end
 
 	def post(url, *a)
-		set_http(url)
+		@current = set_http(url)
 		@current.post(url, *a)
-		@current.curpage
+		#@current.curpage
 	end
 
 	def method_missing(*a)
