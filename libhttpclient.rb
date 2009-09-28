@@ -183,7 +183,8 @@ class HttpClient
 	end
 
 	def post_raw(url, postdata, headers={}, timeout=nil)
-		url = url.sub(/^https?:\/\/[^\/]*/, '')
+		url = url.sub(/^#{cururlprefix_re}\//, '/')
+		raise "no post_raw crossdomain: #{cururlprefix} -> #{url}" if url =~ /^https?:\/\//
 
 		url = abs_path(url, true)
 		
@@ -202,13 +203,14 @@ class HttpClient
 	end
 
 	def post(url, postdata, timeout=nil, pretimeout=nil)
-		url = url.sub(/^https?:\/\/[^\/]*/, '')
+		url = url.sub(/^#{cururlprefix_re}\//, '/')
+		raise "no post crossdomain: #{cururlprefix} -> #{url}" if url =~ /^https?:\/\//
 
 		url = abs_path(url, true)
 		
 		allow = @cur_url ? false : true
 		@post_allowed.each { |p|
-			if p.url == url and p.method == 'post'
+			if p.url.sub(/^#{cururlprefix_re}/, '') == url and p.method == 'post'
 				allow = true
 				p.verify(postdata)
 			end
