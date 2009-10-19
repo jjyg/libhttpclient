@@ -35,7 +35,7 @@ class HttpClient
 		@allowbadget = false
 		@next_fetch = Time.now
 		@do_cache = true
-		@othersite_redirect = lambda { |url| puts "Will no go to another site ! (#{url})" if $VERBOSE rescue nil }
+		@othersite_redirect = lambda { |url| puts "Will no go to another site ! (#{url})" if $DEBUG rescue nil }
 		clear
 	end
 
@@ -272,8 +272,7 @@ class HttpClient
 				return get(newurl, 0, {}, recursive)
 			when /^https?:\/\//
 				#@referer = 'http://' + @http_s.vhost + url	# XXX curpage url or original referer ?
-				@othersite_redirect[newurl]
-				return page
+				return @othersite_redirect[newurl]
 			else
 				raise RuntimeError.new("No location for 302 at #{url}!!!") if not newurl
 				newurl = abs_path(newurl)
@@ -352,6 +351,7 @@ class HttpClient
 		
 		to_fetch_temp = Array.new
 		to_fetch.each { |u|
+			u.strip! if u
 			case u
 			when '', nil
 			when /^(https?:\/\/[^\/]*)?(\/[^?]*)(?:\?(.*))?/i
@@ -379,6 +379,7 @@ class HttpClient
 		}
 		
 		get_allow.each { |u|
+			u.strip! if u
 			case u
 			when /^#{cururlprefix_re}(\/[^?#]*)/i
 				@get_url_allowed << $1
