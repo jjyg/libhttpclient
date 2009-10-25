@@ -9,6 +9,7 @@
 
 require 'libhttp'
 require 'libhtml'
+require 'thread'
 
 # full emulation of http client (js ?)
 
@@ -18,8 +19,11 @@ class HttpClientBadPost < RuntimeError
 end
 
 class HttpClient
+	def self.bgthreadcount ; @@bgthreadcount ||= 4 ; end
+	def self.bgthreadcount=(c) ; @@bgthreadcount = c ; end
+
 	attr_accessor :path, :cookie, :get_url_allowed, :post_allowed, :cache, :cur_url, :curpage, :history, :links, :http_s
-	attr_accessor :bogus_site, :referer, :allowbadget, :do_cache, :othersite_redirect
+	attr_accessor :bogus_site, :referer, :allowbadget, :do_cache, :othersite_redirect, :bgdlqueue, :bgdlthreads
 
 	def initialize(url)
 		if not url.include? '://'
@@ -35,8 +39,24 @@ class HttpClient
 		@allowbadget = false
 		@next_fetch = Time.now
 		@do_cache = true
-		@othersite_redirect = lambda { |url| puts "Will no go to another site ! (#{url})" if $DEBUG rescue nil }
+		@othersite_redirect = lambda { |url_, recurs| puts "Will no go to another site ! (#{url_})" if not recurs rescue nil }
+		@bgdlqueue = Queue.new
+		@bgdlthreads = Array.new(self.class.bgthreadcount) { Thread.new {
+			Thread.current[:http_s] = HttpServer.new(url)
+			loop {
+				get(@bgdlqueue.shift, 0, {}, true)
+			}
+		} }
 		clear
+	end
+
+	undef http_s
+	def http_s
+		Thread.current[:http_s] || @http_s
+	end
+
+	def wait_bg
+		sleep 0.1 until @bgdlqueue.empty?
 	end
 
 	def status_save
@@ -150,7 +170,7 @@ class HttpClient
 	
 	def get(url, timeout=nil, headers={}, recursive=false)
 		url = url.sub(/^#{cururlprefix_re}\//, '/')
-		return @othersite_redirect[url] if url =~ /^https?:\/\//
+		return @othersite_redirect[url, recursive] if url =~ /^https?:\/\//
 
 		url.gsub!(' ', '%20')
 		return if recursive and @cache[url]
@@ -174,7 +194,7 @@ class HttpClient
 			@cur_url = url
 		end
 
-		page = @http_s.get(url, sess_headers.merge(headers))
+		page = http_s.get(url, sess_headers.merge(headers))
 		page = analyse_page(url, page, recursive)
 
 		@curpage = page if not recursive
@@ -195,7 +215,7 @@ class HttpClient
 
 		@cur_url = url
 		@history << 'postraw:'+url
-		page = @http_s.post_raw(url, postdata, sess_headers.merge(headers))
+		page = http_s.post_raw(url, postdata, sess_headers.merge(headers))
 		page = analyse_page(url, page)
 		@curpage = page
 		
@@ -233,7 +253,7 @@ class HttpClient
 	def do_post(url, postdata)
 		@cur_url = url
 		@history << 'post:'+url
-		page = @http_s.post(url, postdata, sess_headers)
+		page = http_s.post(url, postdata, sess_headers)
 		page = analyse_page(url, page)
 		@curpage = page
 		
@@ -272,7 +292,7 @@ class HttpClient
 				return get(newurl, 0, {}, recursive)
 			when /^https?:\/\//
 				#@referer = 'http://' + @http_s.vhost + url	# XXX curpage url or original referer ?
-				return @othersite_redirect[newurl]
+				return @othersite_redirect[newurl, recursive]
 			else
 				raise RuntimeError.new("No location for 302 at #{url}!!!") if not newurl
 				newurl = abs_path(newurl)
@@ -374,9 +394,8 @@ class HttpClient
 		
 		to_fetch = to_fetch_temp.uniq
 #puts "for #{url}: recursing to #{to_fetch.sort.inspect}"
-		to_fetch.each { |u|
-			get(u, 0, {}, true)
-		}
+		to_fetch.each { |u| @bgdlqueue << u }
+		wait_bg
 		
 		get_allow.each { |u|
 			u.strip! if u
@@ -546,10 +565,10 @@ class HttpClientMulti
 
 	def new_http(host, url)
 		h = HttpClient.new(url)
-		h.othersite_redirect = lambda { |u|
+		h.othersite_redirect = lambda { |u, r|
 			newhost = url_get_host(u)
 			if newhost[-@domain.length, @domain.length] == @domain
-				get(u)
+				get(u, nil, {}, r)
 			else
 				puts "redirect out of domain: #{u}"
 			end
