@@ -394,7 +394,7 @@ class HttpClient
 		
 		to_fetch = to_fetch_temp.uniq
 #puts "for #{url}: recursing to #{to_fetch.sort.inspect}"
-		to_fetch.each { |u| @bgdlqueue << u }
+		to_fetch.each { |u| @bgdlqueue << u if not @bgdlthreads.empty? }
 		wait_bg
 		
 		get_allow.each { |u|
