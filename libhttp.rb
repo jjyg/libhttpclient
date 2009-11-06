@@ -375,7 +375,10 @@ class HttpServer
 <!ENTITY apos   CDATA "&#39;"  -- apostrophe, ..., manual -->
 EOE
 	def self.htmlentitiesdec(s)
-		s.gsub(/&#(\d+);/) { $1.to_i < 256 ? $1.to_i.chr : $& }.gsub(/&(\w+);/) { HTMLENTITIES[$1] ? HTMLENTITIES[$1].chr : $& }
+		s.gsub(/&#(x?\d+);/) {
+			v = (($1[0] == ?x) ? $1[1..-1].to_i(16) : $1.to_i)
+			(v < 256) ? v.chr : $&
+		}.gsub(/&(\w+);/) { HTMLENTITIES[$1] ? HTMLENTITIES[$1].chr : $& }
 	end
 
 	def self.htmlentitiesenc(s)
