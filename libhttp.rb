@@ -40,7 +40,7 @@ class HTTP_Timeout
 end
 
 class HttpResp
-	attr_reader :answer, :headers, :content_raw
+	attr_accessor :answer, :headers, :content_raw
 	def initialize
 		@answer = String.new
 		@headers = Hash.new
@@ -155,6 +155,9 @@ class HttpResp
 		'<#HttpAnswer:' + {'answer' => answer, 'headers' => headers, 'content' => content}.inspect
 	end
 
+	def get_text_sep; @get_text_sep ||= ' ' end
+	def get_text_sep=(a) @get_text_sep = a end
+
 	def get_text(onlyform=false, onlystr=true)
 		inform = false
 		inbody = false
@@ -178,7 +181,7 @@ class HttpResp
 
 			case e.type
 			when 'String'
-				txt << ' ' if maynl
+				txt << get_text_sep if maynl
 				txt << HttpServer.htmlentitiesdec(e['content'].gsub(/(?:&nbsp;|\s)+/, ' ').strip)
 				maynl = true
 			when 'optgroup'
