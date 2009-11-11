@@ -310,6 +310,7 @@ def parsehtml(page, nocache=false)
 			if (c == ?> and curword =~ /<\s*\/\s*#{curelem.type}\s*$/i)
 				curelem.type.capitalize!
 				curelem['content'] = curword << c
+				curelem.empty = true
 				if parse
 					parse << curelem
 				else
