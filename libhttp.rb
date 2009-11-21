@@ -63,16 +63,15 @@ class HttpResp
 			if @headers['content-encoding'] == 'gzip'
 				tmpname = '/tmp/httpget.gz.'
 				ext = rand(10000)
-				while (File.exist?(tmpname+ext.to_s))
-					ext = rand(10000)
-				end
+				ext = rand(10000) while (File.exist?(tmpname+ext.to_s))
 				begin
-					file = File.new(tmpname+ext.to_s, 'wb+')
-					file.write(@content_raw)
-					file.rewind
-					zfile = Zlib::GzipReader.new(file)
-					@content = zfile.read
-					zfile.close
+					File.open(tmpname+ext.to_s, 'wb+') { |file|
+						file.write(@content_raw)
+						file.rewind
+						zfile = Zlib::GzipReader.new(file)
+						@content = zfile.read
+						zfile.close
+					}
 				ensure
 					File.unlink(tmpname+ext.to_s)
 				end
