@@ -25,6 +25,13 @@ class HttpClient
 	attr_accessor :path, :cookie, :get_url_allowed, :post_allowed, :cache, :cur_url, :curpage, :history, :links, :http_s
 	attr_accessor :bogus_site, :referer, :allowbadget, :do_cache, :othersite_redirect, :bgdlqueue, :bgdlthreads
 
+	def self.open(*a)
+		s = new(*a)
+		yield s
+	ensure
+		s.close
+	end
+
 	def initialize(url)
 		if not url.include? '://'
 			url = "http://#{url}/"
@@ -44,10 +51,23 @@ class HttpClient
 		@bgdlthreads = Array.new(self.class.bgthreadcount) { Thread.new {
 			Thread.current[:http_s] = HttpServer.new(url)
 			loop {
-				get(@bgdlqueue.shift, 0, {}, true)
+				tg = @bgdlqueue.shift
+				if tg == :close
+					Thread.current[:http_s].close
+					break
+				end
+				get(tg, 0, {}, true)
 			}
 		} }
 		clear
+	end
+
+	def close
+		clear
+		@http_s.close
+		@bgdlthreads.each { @bgdlqueue << :close }
+		@bgdlthreads.each { |t| t.join }
+	rescue
 	end
 
 	undef http_s

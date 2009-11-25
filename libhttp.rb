@@ -225,6 +225,13 @@ class HttpServer
 	end
 	attr_accessor :timeout, :hdr_useragent, :hdr_accept, :hdr_encoding, :hdr_language
 
+	def self.open(*a)
+		s = new(*a)
+		yield s
+	ensure
+		s.close
+	end
+
         def initialize(url)
 		if not url.include? '://'
 			url = "http://#{url}/"
@@ -414,15 +421,12 @@ EOE
 			h.map { |k, v| "#{k}: #{v}" }
 		req = ["GET #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + h
 		req = req.join("\r\n") + "\r\n\r\n"
-		begin
-			s = send_req req
-		rescue Errno::ECONNREFUSED
-			resp = HttpResp.new
-			resp.answer.replace("HTTP/1.1 503 Connection refused")
-			resp.content_raw << "The server refused the connection"
-			return resp
-		end
-		return read_resp(s)
+		read_resp send_req(req)
+	rescue Errno::ECONNREFUSED
+		resp = HttpResp.new
+		resp.answer.replace("HTTP/1.1 503 Connection refused")
+		resp.content_raw << "The server refused the connection"
+		return resp
 	end
 
 	def post_raw(page, postraw, headers = Hash.new)
@@ -432,15 +436,12 @@ EOE
 		req = ["POST #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n" + postraw
 		
-		begin
-			s = send_req req
-		rescue Errno::ECONNREFUSED
-			resp = HttpResp.new
-			resp.answer.replace("HTTP/1.1 503 Connection refused")
-			resp.content_raw << "The server refused the connection"
-			return resp
-		end
-		read_resp(s)
+		read_resp send_req(req)
+	rescue Errno::ECONNREFUSED
+		resp = HttpResp.new
+		resp.answer.replace("HTTP/1.1 503 Connection refused")
+		resp.content_raw << "The server refused the connection"
+		return resp
 	end
 
 	def post(page, postdata, headers = Hash.new)
@@ -484,14 +485,21 @@ EOE
                 end
         end
 
+	def close
+		return if not @socket
+ 		@socket.shutdown
+		@socket.close
+		@socket = nil
+	rescue
+	end
+
 	def send_req(req)
 		s = nil
 		retried = 0
 		puts 'send_req:', req if $DEBUG
 	begin
 		if not @socket or !( @socket.write req ; s = @socket.gets )
-			@socket.shutdown if @socket rescue nil
-			@socket.close if @socket rescue nil
+			close
 
 			connect_socket
 
@@ -558,12 +566,7 @@ EOE
 		reader.join
 		timer.end
 		
-		close_sock = true if page.headers['connection'] == 'close'
-		if close_sock
-			@socket.shutdown rescue nil
-			@socket.close rescue nil
-			@socket = nil
-		end
+		close if close_sock or page.headers['connection'] == 'close'
 		return page
 	end
 end
