@@ -188,6 +188,15 @@ class HttpClient
 		@next_fetch = Time.now
 	end
 	
+	def head(url, timeout=nil, headers={})
+		url = url.sub(/^#{cururlprefix_re}\//, '/')
+		return if url =~ /^https?:\/\//
+		url.gsub!(' ', '%20')
+		url = abs_path(url, false)
+		return @curpage if url == @cur_url
+		http_s.head(url, sess_headers.merge(headers))
+	end
+
 	def get(url, timeout=nil, headers={}, recursive=false)
 		url = url.sub(/^#{cururlprefix_re}\//, '/')
 		return @othersite_redirect[url, recursive] if url =~ /^https?:\/\//

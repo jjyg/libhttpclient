@@ -412,6 +412,23 @@ EOE
 		headers['Proxy-Authorization'] ||= @proxylp if @proxylp and not @use_ssl
 	end
 
+	def head(page, headers = Hash.new)
+		setup_request_headers(headers)
+		
+		# sort headers (TODO better)
+		h = headers.dup
+		h = ["Host: #{h.delete 'Host'}"] +
+			h.map { |k, v| "#{k}: #{v}" }
+		req = ["HEAD #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + h
+		req = req.join("\r\n") + "\r\n\r\n"
+		read_resp send_req(req), true
+	rescue Errno::ECONNREFUSED
+		resp = HttpResp.new
+		resp.answer.replace("HTTP/1.1 503 Connection refused")
+		resp.content_raw << "The server refused the connection"
+		return resp
+	end
+
 	def get(page, headers = Hash.new)
 		setup_request_headers(headers)
 		
@@ -515,7 +532,7 @@ EOE
 		return s
 	end
 
-	def read_resp(status)
+	def read_resp(status, nobody=false)
 		page = HttpResp.new
 		page.answer.replace(status||'')
 		timer = HTTP_Timeout.new(@timeout)
@@ -534,7 +551,8 @@ EOE
 				end
 				break if line =~ /^\r?$/
 			end
-			if page.headers['content-length']
+			if no_body
+			elsif page.headers['content-length']
 				contentlength = page.headers['content-length'].to_i
 				while contentlength > 1024
 					page.content_raw << @socket.read(1024)
@@ -555,7 +573,7 @@ EOE
 				end
 				close_sock = false
 			else
-			# Sinon on lit tout ce qu'on peut
+				# Sinon on lit tout ce qu'on peut
 				while not @socket.eof?
 					page.content_raw << @socket.read(1024)
 					timer.reset
