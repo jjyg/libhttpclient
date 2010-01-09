@@ -532,7 +532,7 @@ EOE
 		return s
 	end
 
-	def read_resp(status, nobody=false)
+	def read_resp(status, no_body=false)
 		page = HttpResp.new
 		page.answer.replace(status||'')
 		timer = HTTP_Timeout.new(@timeout)
