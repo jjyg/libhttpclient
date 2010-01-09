@@ -279,7 +279,7 @@ class HttpServer
 
 	# This takes the long string til EOE, matches it with scan, and build a hash from that
 	# > 255 omitted
-	HTMLENTITIES ||= Hash[*<<EOE.scan(/ENTITY (\S+)\s+CDATA "&#(\d+);"/).map { |k, v| [k, v.to_i] }.flatten]
+	HTMLENTITIES = Hash[*<<EOE.scan(/ENTITY (\S+)\s+CDATA "&#(\d+);"/).map { |k, v| [k, v.to_i] }.flatten] if not defined? HTMLENTITIES
 <!ENTITY quot    CDATA "&#34;"   -- quotation mark = APL quote, U+0022 ISOnum -->
 <!ENTITY amp     CDATA "&#38;"   -- ampersand, U+0026 ISOnum -->
 <!ENTITY lt      CDATA "&#60;"   -- less-than sign, U+003C ISOnum -->
