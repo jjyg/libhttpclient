@@ -29,7 +29,7 @@ class HttpClient
 		s = new(*a)
 		yield s
 	ensure
-		s.close
+		s.close if s
 	end
 
 	def initialize(url)
