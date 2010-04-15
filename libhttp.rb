@@ -5,38 +5,11 @@
 #
 
 require 'socket'
+require 'timeout'
 require 'zlib'
 begin
 require 'openssl'
 rescue LoadError
-end
-
-class HTTP_Timeout
-	def initialize(value)
-		@value = value.to_i
-		@value_init = @value
-		@ident = rand(10000)
-	end
-
-	def end
-		Thread.kill(@run) if @run.alive?
-		@run.join
-	end
-	
-	def run
-		@action = Proc.new
-		@run = Thread.new {
-			while (@value > 0)
-				sleep 1
-				@value -= 1
-			end
-			@action.call
-		}
-	end
-
-	def reset
-		@value = @value_init
-	end
 end
 
 class HttpResp
@@ -72,6 +45,8 @@ class HttpResp
 						@content = zfile.read
 						zfile.close
 					}
+				rescue IOError
+					# some version of zfile.close will also close file and make File.open {} raise
 				ensure
 					File.unlink(tmpname+ext.to_s)
 				end
@@ -333,7 +308,8 @@ class HttpServer
 <!ENTITY Iacute CDATA "&#205;" -- latin capital letter I with acute, U+00CD ISOlat1 -->
 <!ENTITY Icirc  CDATA "&#206;" -- latin capital letter I with circumflex, U+00CE ISOlat1 -->
 <!ENTITY Iuml   CDATA "&#207;" -- latin capital letter I with diaeresis, U+00CF ISOlat1 -->
-<!ENTITY ETH    CDATA "&#208;" -- latin capital letter ETH, U+00D0 ISOlat1 --> <!ENTITY Ntilde CDATA "&#209;" -- latin capital letter N with tilde, U+00D1 ISOlat1 -->
+<!ENTITY ETH    CDATA "&#208;" -- latin capital letter ETH, U+00D0 ISOlat1 -->
+<!ENTITY Ntilde CDATA "&#209;" -- latin capital letter N with tilde, U+00D1 ISOlat1 -->
 <!ENTITY Ograve CDATA "&#210;" -- latin capital letter O with grave, U+00D2 ISOlat1 -->
 <!ENTITY Oacute CDATA "&#211;" -- latin capital letter O with acute, U+00D3 ISOlat1 -->
 <!ENTITY Ocirc  CDATA "&#212;" -- latin capital letter O with circumflex, U+00D4 ISOlat1 -->
@@ -535,12 +511,10 @@ EOE
 	def read_resp(status, no_body=false)
 		page = HttpResp.new
 		page.answer.replace(status||'')
-		timer = HTTP_Timeout.new(@timeout)
 		close_sock = true
-		reader = Thread.new {
+		Timeout.timeout(@timeout, RuntimeError) {
 			# parse le header renvoyé par le serveur
 			while line = @socket.gets
-				timer.reset
 				if line =~ /^([^:]*):\s*(.*?)\r?$/
 					k, v = $1.downcase, $2
 					if (page.headers[k])
@@ -557,7 +531,6 @@ EOE
 				while contentlength > 1024
 					page.content_raw << @socket.read(1024)
 					contentlength -= 1024
-					timer.reset
 				end
 				page.content_raw << @socket.read(contentlength) if contentlength > 0
 				close_sock = false
@@ -569,20 +542,15 @@ EOE
 					chunk = @socket.read chunksize
 					page.content_raw << chunk
 					@socket.read 2
-					timer.reset
 				end
 				close_sock = false
 			else
 				# Sinon on lit tout ce qu'on peut
 				while not @socket.eof?
 					page.content_raw << @socket.read(1024)
-					timer.reset
 				end
 			end
-		}
-		timer.run { puts "HTTP Read timeout !" ; Thread.kill reader }
-		reader.join
-		timer.end
+		} rescue nil
 		
 		close if close_sock or page.headers['connection'] == 'close'
 		return page
