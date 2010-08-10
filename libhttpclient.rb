@@ -312,6 +312,7 @@ class HttpClient
 			case newurl
 			when /^http#{'s' if @http_s.use_ssl}:\/\/#{@http_s.vhost}(?::#{@http_s.vport or @http_s.use_ssl ? 443 : 80})?(.*)$/, /^(\/.*)$/
 				newurl = $1
+				newurl = '/'+newurl if newurl[0] != ?/
 				if newurl =~ /^(.*?)\?(.*)$/
 					newurl, gdata = $1, $2
 					newurl += '?' +
