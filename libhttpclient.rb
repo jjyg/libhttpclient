@@ -365,7 +365,7 @@ class HttpClient
 			when 'a', 'area'
 				get_allow << e['href']
 			when 'link'
-				to_fetch << e['href']
+				to_fetch << e['href'] unless e['rel'] == 'alternate'
 			when 'form'
 				# default target
 				tg = cururlprefix + url.sub(/[?#].*$/, '')
