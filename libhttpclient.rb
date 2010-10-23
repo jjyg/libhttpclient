@@ -62,6 +62,8 @@ class HttpClient
 		clear
 	end
 
+	def urlpath; @http_s.urlpath ; end
+
 	def close
 		clear
 		@http_s.close
