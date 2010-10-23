@@ -56,7 +56,9 @@ class HttpClient
 					Thread.current[:http_s].close
 					break
 				end
+				Thread.current[:status] = :busy
 				get(tg, 0, {}, true)
+				Thread.current[:status] = :idle
 			}
 		} }
 		clear
@@ -78,7 +80,7 @@ class HttpClient
 	end
 
 	def wait_bg
-		sleep 0.1 until @bgdlqueue.empty?
+		sleep 0.1 until @bgdlqueue.empty? and @bgdlthreads.all? { |t| t[:state] == :idle }
 	end
 
 	def status_save
