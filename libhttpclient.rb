@@ -81,7 +81,7 @@ class HttpClient
 	end
 
 	def wait_bg
-		sleep 0.1 until @bgdlqueue.empty? and @bgdlthreads.all? { |t| t[:state] == :idle }
+		sleep 0.1 until @bgdlqueue.empty? and @bgdlthreads.all? { |t| t[:status] == :idle }
 	end
 
 	def status_save
