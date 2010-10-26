@@ -49,6 +49,7 @@ class HttpClient
 		@othersite_redirect = lambda { |url_, recurs| puts "Will no go to another site ! (#{url_})" if not recurs rescue nil }
 		@bgdlqueue = Queue.new
 		@bgdlthreads = Array.new(self.class.bgthreadcount) { Thread.new {
+			Thread.current[:status] = :idle
 			Thread.current[:http_s] = HttpServer.new(url)
 			loop {
 				tg = @bgdlqueue.shift
