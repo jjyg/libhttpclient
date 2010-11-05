@@ -214,7 +214,7 @@ class HttpServer
 		end
 
 		hostre = '[\w.-]+|\[[a-fA-F0-9:]+\]'
-                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:(http-proxy|socks)://(\w*:\w*@)?(#{hostre})(:\d+)?/)?http(s)?://(\w*:\w*@)?(?:([\w.-]+)(:\d+)?@)?(#{hostre})(:\d+)?(/.*)}.match(url)
+                raise "Unparsed url #{url.inspect}" unless md = %r{^(?:(http-proxy|socks)://(\w*:[^@]*@)?(#{hostre})(:\d+)?/)?http(s)?://(\w*:[^@]*@)?(?:([\w.-]+)(:\d+)?@)?(#{hostre})(:\d+)?(/.*)}.match(url)
 
 		@proxytype, @proxylp, @proxyh, proxyp, @use_ssl, @loginpass, vhost, vport, @host, port, @urlpath = md.captures
 		@proxyh = @proxyh[1..-2] if @proxyh and @proxyh[0] == ?[
@@ -223,9 +223,9 @@ class HttpServer
                 @proxyp = proxyp ? proxyp[1..-1].to_i : 3128
                 @port = port ? port[1..-1].to_i : (@use_ssl ? 443 : 80)
 
-                @proxylp = 'Basic '+[@proxylp.chop].pack('m').chomp if @proxylp
+                @proxylp = 'Basic '+[@proxylp.chop].pack('m').split.join if @proxylp
 		@loginpass = nil if @loginpass == ':@'
-                @loginpass = 'Basic '+[@loginpass.chop].pack('m').chomp if @loginpass
+                @loginpass = 'Basic '+[@loginpass.chop].pack('m').split.join if @loginpass
                 @vhost = vhost ? vhost : @host
 		@vport = vport ? vport[1..-1].to_i : @port
 
