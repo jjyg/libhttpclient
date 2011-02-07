@@ -377,7 +377,7 @@ EOE
 	
 	def setup_request_headers(headers)
 		headers['Host'] = @vhost
-		headers['Host'] += ":#@vport" if @vport != 80
+		#headers['Host'] += ":#@vport" if @vport != 80
 		headers['User-Agent'] ||= @hdr_useragent
 		headers['Accept'] ||= @hdr_accept
 		headers['Connection'] ||= 'keep-alive'
@@ -481,7 +481,7 @@ EOE
 
 	def close
 		return if not @socket
- 		@socket.shutdown
+ 		@socket.shutdown if @socket.respond_to? :shutdown	# SSL
 		@socket.close
 		@socket = nil
 	rescue
