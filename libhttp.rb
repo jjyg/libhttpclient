@@ -8,7 +8,7 @@ require 'socket'
 require 'timeout'
 require 'zlib'
 begin
-require 'openssl'
+	require 'openssl'
 rescue LoadError
 end
 
@@ -26,7 +26,7 @@ class HttpResp
 	def parse(type=nil)
 		type ? @parse.find_all { |e| e.type == type } : @parse
 	end
-	
+
 	def status
 		$1.to_i if @answer =~ /^HTTP\/1.\d+ (\d+) /
 	end
@@ -62,17 +62,17 @@ class HttpResp
 	end
 
 	def each_table
-	
+
 		raise "No parse" unless @parse
 
 		# table est un array de [tablenum, ligne, col]
 		# [[2, 1, 1], [1, 2, 3]] indique que l'on est dans la case [2, 3] de la premiere table contenue dans 
 		# la case [1, 1] de la deuxieme table du toplevel
 		# <table>..</table> <table><tr><td> <table><tr></tr><tr><td></td><td></td><td> ->*<-
-		
+
 		table = []
 		donetable = false
-		
+
 		@parse.each { |e|
 			case e.type
 			when 'table'
@@ -84,11 +84,11 @@ class HttpResp
 				else
 					table << [1, 0, 0]
 				end
-			
+
 			when 'tr'
 				table.last[1] += 1
 				table.last[2] = 0
-			
+
 			when 'td', 'th'
 				if donetable
 					table.pop
@@ -99,11 +99,11 @@ class HttpResp
 			# not mandatory
 			when '/td', '/th'
 			when '/tr'
-			
+
 			when '/table'
 				table.pop if donetable
 				donetable = true
-			
+
 			else
 				donetable = table.pop if donetable
 
@@ -117,10 +117,10 @@ class HttpResp
 				end
 			end
 		}
-		
+
 		nil
 	end
-	
+
 	def to_s
 		@answer + @headers.map { |k, v| "#{k}: #{v}" }.join("\r\n") + "\r\n\r\n" + content
 	end
@@ -163,14 +163,14 @@ class HttpResp
 				txt << HttpServer.htmlentitiesdec(e['label'])
 				txt << nl
 				maynl = false
-				
+
 			when 'b', '/b', 'td', '/td', 'span', '/span', 'font', '/font', 'Comment', 'Script', 'img', 'em', '/em'
 				nil
-		
+
 			when 'br', 'p', '/p', 'table', '/table', 'tr', '/tr', 'tbody', '/tbody', 'div', '/div', '/option', 'li', '/li', 'ul', '/ul'
 				txt << nl if maynl
 				maynl = false
-			
+
 			else
 			# input select option textarea
 				next if onlystr
@@ -375,7 +375,7 @@ EOE
 			e ? "&#{e};" : $1
 		}
 	end
-	
+
 	def setup_request_headers(headers)
 		headers['Host'] = @vhost
 		#headers['Host'] += ":#@vport" if @vport != 80
@@ -392,7 +392,7 @@ EOE
 
 	def head(page, headers = Hash.new)
 		setup_request_headers(headers)
-		
+
 		# sort headers (TODO better)
 		h = headers.dup
 		h = ["Host: #{h.delete 'Host'}"] +
@@ -409,7 +409,7 @@ EOE
 
 	def get(page, headers = Hash.new)
 		setup_request_headers(headers)
-		
+
 		# sort headers (TODO better)
 		h = headers.dup
 		h = ["Host: #{h.delete 'Host'}"] +
@@ -430,7 +430,7 @@ EOE
 		headers['Content-length'] = postraw.length
 		req = ["POST #{'http://' << (@host + (@port != 80 ? ":#@port" : '')) if @proxyh}#{page} HTTP/1.1"] + headers.map { |k, v| "#{k}: #{v}" }
 		req = req.join("\r\n") + "\r\n\r\n" + postraw
-		
+
 		read_resp send_req(req)
 	rescue Errno::ECONNREFUSED
 		resp = HttpResp.new
@@ -448,22 +448,22 @@ EOE
 		}.join('&'), headers)
 	end
 
-        def connect_socket
+	def connect_socket
 		case @proxytype
 		when 'http-proxy'
-                        @socket = TCPSocket.new @proxyh, @proxyp
-                        if @use_ssl
+			@socket = TCPSocket.new @proxyh, @proxyp
+			if @use_ssl
 				rq =  "CONNECT #@host:#@port HTTP/1.1\r\n"
 				rq << "Proxy-Authorization: #{@proxylp}\r\n" if @proxylp
 				rq << "\r\n"
 				@socket.write rq
-                                buf = @socket.gets
-                                raise "non http answer #{buf[1..100].inspect}" if buf !~ /^HTTP\/1.. (\d+) /
-                                raise "CONNECT bad response: #{buf.inspect}" if $1.to_i != 200
-                                nil until @socket.gets.chomp.empty?
-                        end
+				buf = @socket.gets
+				raise "non http answer #{buf[1..100].inspect}" if buf !~ /^HTTP\/1.. (\d+) /
+				raise "CONNECT bad response: #{buf.inspect}" if $1.to_i != 200
+				nil until @socket.gets.chomp.empty?
+			end
 		when 'socks'
-                        @socket = TCPSocket.new @proxyh, @proxyp
+			@socket = TCPSocket.new @proxyh, @proxyp
 			# socks_ver 1=connect/2=bind port dest/0.0.0.1=sock4adns creds_strz hostsocks4a_strz
 			buf = [4, 1, @port, 1, '', @host].pack('CCnNa*xa*x')
 			@socket.write buf
@@ -471,18 +471,18 @@ EOE
 			resp = %w[access_granted access_failed failed_noident failed_badindent][bufa[1] - ?Z]
 			raise "socks: #{resp} #{bufa.inspect}" if resp != 'access_granted'
 		else
-                        @socket = TCPSocket.new @host, @port
+			@socket = TCPSocket.new @host, @port
 		end
-                if @use_ssl
-                        @socket = OpenSSL::SSL::SSLSocket.new(@socket, OpenSSL::SSL::SSLContext.new)
-                        @socket.sync_close = true
-                        @socket.connect
-                end
-        end
+		if @use_ssl
+			@socket = OpenSSL::SSL::SSLSocket.new(@socket, OpenSSL::SSL::SSLContext.new)
+			@socket.sync_close = true
+			@socket.connect
+		end
+	end
 
 	def close
 		return if not @socket
- 		@socket.shutdown if @socket.respond_to? :shutdown	# SSL
+		@socket.shutdown if @socket.respond_to? :shutdown	# SSL
 		@socket.close
 		@socket = nil
 	rescue
@@ -553,7 +553,7 @@ EOE
 				end
 			end
 		} rescue nil
-		
+
 		close if close_sock or page.headers['connection'] == 'close'
 		return page
 	end
