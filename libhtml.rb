@@ -74,6 +74,7 @@ def parsehtml(page, nocache=false)
 	
 	# tags type and attrname downcased
 	
+	page.force_encoding('binary') if page.respond_to?(:force_encoding)
 	pg = page.gsub(/\s+/, ' ')	# incl. newlines
 	pg.length.times { |pos|
 		c = pg[pos] # any other way to enumerate characters of the string portably (ruby 1.8 & 1.9) ?
