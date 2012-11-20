@@ -34,22 +34,12 @@ class HttpResp
 	def content
 		if not @content
 			if @headers['content-encoding'] == 'gzip'
-				tmpname = '/tmp/httpget.gz.'
-				ext = rand(10000)
-				ext = rand(10000) while (File.exist?(tmpname+ext.to_s))
-				begin
-					File.open(tmpname+ext.to_s, 'wb+') { |file|
-						file.write(@content_raw)
-						file.rewind
-						zfile = Zlib::GzipReader.new(file)
-						@content = zfile.read
-						zfile.close
-					}
-				rescue IOError
-					# some version of zfile.close will also close file and make File.open {} raise
-				ensure
-					File.unlink(tmpname+ext.to_s)
+				cr = @content_raw
+				if cr[0,2].unpack('C*') == [0x1f, 0x8b]
+					cr = cr[10..-1]	# XXX lol gzip!
 				end
+				z = Zlib::Inflate.new(-Zlib::MAX_WBITS)
+				@content = z.inflate(cr)
 			elsif @headers['content-encoding'] == 'deflate'
 				puts "Content-encoding deflate !!!"
 				@content = Zlib::Inflate.inflate(@content_raw)
