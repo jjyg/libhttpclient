@@ -178,10 +178,10 @@ class HttpServer
 
 	# global defaults
 	@@timeout = 120
-	@@hdr_useragent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 (.NET CLR 3.5.30729)'
-	@@hdr_accept = 'text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5'
+	@@hdr_useragent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.64 Safari/537.31'
+	@@hdr_accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
 	@@hdr_encoding = 'gzip,deflate'
-	@@hdr_language = 'en'
+	@@hdr_language = 'en-US,en'
 	class << self
 		%w[timeout hdr_useragent hdr_accept hdr_encoding hdr_language].each { |a|
 			define_method(a) { class_variable_get "@@#{a}" }
@@ -204,7 +204,7 @@ class HttpServer
 		end
 
 		hostre = '[\w.-]+|\[[a-fA-F0-9:]+\]'
-		raise "Unparsed url #{url.inspect}" unless md = %r{^(?:(http-proxy|socks)://(\w*:[^@]*@)?(#{hostre})(:\d+)?/)?http(s)?://(\w*:[^@]*@)?(?:(#{hostre})(:\d+)?@)?(#{hostre})(:\d+)?(/.*)}.match(url)
+		raise "Unparsed url #{url.inspect}" unless md = %r{^(?:(http-proxy|socks)://(\w*:[^@/]*@)?(#{hostre})(:\d+)?/)?http(s)?://(\w*:[^@/]*@)?(?:(#{hostre})(:\d+)?@)?(#{hostre})(:\d+)?(/.*)}.match(url)
 
 		@proxytype, @proxylp, @proxyh, proxyp, @use_ssl, @loginpass, vhost, vport, @host, port, @urlpath = md.captures
 		@proxyh = @proxyh[1..-2] if @proxyh and @proxyh[0] == ?[
