@@ -409,6 +409,12 @@ class HttpClient
 			u.strip! if u
 			case u
 			when '', nil
+			when /^(\/\/[^\/]*)?(\/[^?]*)(?:\?(.*))?/i
+				if $3
+					to_fetch_temp << ("http#{'s' if @http_s.use_ssl}:"+ $1.to_s + HttpServer.urlenc($2) + '?' + $3)
+				else
+					to_fetch_temp << ("http#{'s' if @http_s.use_ssl}:"+ $1.to_s + HttpServer.urlenc($2))
+				end
 			when /^(https?:\/\/[^\/]*)?(\/[^?]*)(?:\?(.*))?/i
 				if $3
 					to_fetch_temp << ($1.to_s + HttpServer.urlenc($2) + '?' + $3)
