@@ -311,7 +311,7 @@ class HttpClient
 		end
 		
 		case page.status
-		when 301, 302
+		when 301, 302, 303
 			newurl = page.headers['location'].sub(/#[^?]*/, '')
 			puts "#{page.status} to #{newurl}" if $DEBUG and not recursive
 			case newurl
